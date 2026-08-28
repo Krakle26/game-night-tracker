@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Game Night</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #16161A;
+    --paper: #1F1F24;
+    --paper-raised: #26262D;
+    --tape: #E8B923;
+    --tape-dark: #C79A17;
+    --spot: #FF4D6D;
+    --ink: #F2EFE9;
+    --ink-dim: #8A8790;
+    --line: #333138;
+
+    --pc: #35C7C0;
+    --ps5: #5B6EE1;
+    --xbox: #6BBF59;
+    --switch: #E15554;
+    --other: #E8933A;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at top, rgba(255,255,255,0.03), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Work Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    padding-bottom:96px;
+  }
+  .display{ font-family:'Bebas Neue', sans-serif; letter-spacing:0.03em; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    position:relative;
+    margin:24px 20px 28px;
+    padding:22px 20px 20px;
+    background:var(--paper);
+    border-radius:4px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.35);
+    text-align:center;
+  }
+  .tape-corner{
+    position:absolute;
+    width:60px; height:22px;
+    background:repeating-linear-gradient(45deg, var(--tape), var(--tape) 6px, var(--tape-dark) 6px, var(--tape-dark) 12px);
+    opacity:0.9;
+    box-shadow:0 2px 4px rgba(0,0,0,0.3);
+  }
+  .tape-corner.tl{ top:-10px; left:-14px; transform:rotate(-8deg); }
+  .tape-corner.tr{ top:-10px; right:-14px; transform:rotate(8deg); }
+  .masthead h1{
+    margin:4px 0 2px;
+    font-size:44px;
+    line-height:1;
+    color:var(--ink);
+  }
+  .masthead .sub{
+    margin:0;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+  .masthead .pass{
+    margin-top:14px;
+    font-size:11px;
+    color:var(--ink-dim);
+  }
+  .masthead .pass button{
+    background:none; border:none; color:var(--tape);
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; text-decoration:underline;
+    cursor:pointer; padding:0;
+  }
+
+  /* ---------- Search ---------- */
+  .search-wrap{ margin:0 20px 18px; }
+  .search-wrap input{
+    width:100%;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:12px 14px;
+    color:var(--ink);
+    font-family:'Work Sans', sans-serif;
+    font-size:14px;
+  }
+  .search-wrap input::placeholder{ color:var(--ink-dim); }
+  .search-wrap input:focus{ outline:2px solid var(--tape); outline-offset:1px; }
+
+  /* ---------- Tabs ---------- */
+  .tabs{
+    display:flex;
+    gap:4px;
+    margin:0 20px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  .tab{
+    flex:1;
+    background:none;
+    border:none;
+    color:var(--ink-dim);
+    font-family:'Bebas Neue', sans-serif;
+    letter-spacing:0.04em;
+    font-size:17px;
+    padding:10px 4px 12px;
+    cursor:pointer;
+    border-bottom:3px solid transparent;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+  }
+  .tab .count{ font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--ink-dim); }
+  .tab.active{ color:var(--ink); border-bottom-color:var(--tape); }
+  .tab:focus-visible{ outline:2px solid var(--tape); outline-offset:2px; }
+
+  /* ---------- List ---------- */
+  .list{ margin:0 20px; display:flex; flex-direction:column; gap:12px; }
+  .empty{
+    text-align:center;
+    color:var(--ink-dim);
+    font-size:13px;
+    padding:40px 20px;
+    border:1px dashed var(--line);
+    border-radius:8px;
+  }
+  .status-msg{ text-align:center; color:var(--ink-dim); font-size:13px; padding:24px; }
+
+  .stub{
+    position:relative;
+    display:flex;
+    align-items:stretch;
+    background:var(--paper);
+    border-radius:8px;
+    overflow:hidden;
+    box-shadow:0 2px 8px rgba(0,0,0,0.25);
+  }
+  .stub.now{ box-shadow:0 0 0 1.5px var(--spot), 0 2px 10px rgba(255,77,109,0.15); }
+
+  .cover{
+    width:64px; min-width:64px;
+    background:var(--paper-raised);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--ink);
+    font-family:'Bebas Neue', sans-serif;
+    font-size:22px;
+    overflow:hidden;
+  }
+  .cover img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+  .stub-body{
+    flex:1;
+    min-width:0;
+    padding:10px 12px;
+    display:flex; flex-direction:column; justify-content:center; gap:5px;
+  }
+  .stub-title{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:19px;
+    letter-spacing:0.02em;
+    color:var(--ink);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .stub-meta{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    color:var(--ink-dim);
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+  }
+  .tag{
+    display:inline-block;
+    padding:2px 7px;
+    border-radius:3px;
+    font-size:9px;
+    font-weight:600;
+    color:#0e0e10;
+    letter-spacing:0.04em;
+  }
+  .note{
+    font-family:'Work Sans', sans-serif;
+    font-size:12px;
+    color:var(--ink-dim);
+    font-style:italic;
+    text-transform:none;
+    letter-spacing:0;
+  }
+
+  /* perforation */
+  .perf{
+    position:relative;
+    width:0;
+    border-left:1px dashed var(--line);
+  }
+  .perf::before, .perf::after{
+    content:'';
+    position:absolute;
+    left:-6px;
+    width:12px; height:12px;
+    border-radius:50%;
+    background:var(--bg);
+  }
+  .perf::before{ top:-6px; }
+  .perf::after{ bottom:-6px; }
+
+  .stub-actions{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:6px;
+    padding:0 10px;
+  }
+  .act-btn{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink-dim);
+    width:30px; height:30px;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    font-size:14px;
+    line-height:1;
+  }
+  .act-btn:hover{ border-color:var(--tape); color:var(--tape); }
+  .act-btn.advance{ border-color:var(--tape); color:var(--tape); }
+  .act-btn:focus-visible{ outline:2px solid var(--tape); outline-offset:2px; }
+
+  /* ---------- FAB ---------- */
+  .fab{
+    position:fixed;
+    right:20px; bottom:24px;
+    width:56px; height:56px;
+    border-radius:50%;
+    background:var(--tape);
+    color:#16161A;
+    border:none;
+    font-size:28px;
+    font-weight:700;
+    box-shadow:0 6px 16px rgba(0,0,0,0.4);
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .fab:focus-visible{ outline:2px solid var(--ink); outline-offset:3px; }
+
+  /* ---------- Modal ---------- */
+  .overlay{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.6);
+    display:flex; align-items:flex-end;
+    justify-content:center;
+    z-index:50;
+  }
+  @media (min-width:560px){ .overlay{ align-items:center; } }
+  .modal{
+    background:var(--paper);
+    width:100%;
+    max-width:480px;
+    max-height:85vh;
+    border-radius:16px 16px 0 0;
+    padding:20px;
+    overflow-y:auto;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  @media (min-width:560px){ .modal{ border-radius:12px; } }
+  .modal h2{
+    margin:0;
+    font-family:'Bebas Neue', sans-serif;
+    font-size:26px;
+    letter-spacing:0.03em;
+  }
+  .modal .close{
+    position:absolute; top:14px; right:18px;
+    background:none; border:none; color:var(--ink-dim);
+    font-size:20px; cursor:pointer;
+  }
+  .field label{
+    display:block;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-dim);
+    margin-bottom:6px;
+  }
+  .field input, .field select, .field textarea{
+    width:100%;
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:10px 12px;
+    color:var(--ink);
+    font-family:'Work Sans', sans-serif;
+    font-size:14px;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{
+    outline:2px solid var(--tape); outline-offset:1px;
+  }
+  .btn{
+    background:var(--tape);
+    color:#16161A;
+    border:none;
+    border-radius:8px;
+    padding:12px 16px;
+    font-family:'Work Sans', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .btn.secondary{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink);
+  }
+  .btn:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+
+  .result-row{
+    display:flex; align-items:center; gap:10px;
+    padding:8px;
+    border-radius:8px;
+    cursor:pointer;
+    border:1px solid transparent;
+  }
+  .result-row:hover{ background:var(--paper-raised); border-color:var(--line); }
+  .result-row .cover{ width:40px; min-width:40px; height:52px; border-radius:4px; font-size:14px; }
+  .result-row .rtitle{ font-size:14px; font-weight:600; }
+  .result-row .rmeta{ font-size:11px; color:var(--ink-dim); font-family:'JetBrains Mono', monospace; }
+
+  .banner{
+    font-size:12px;
+    padding:10px 12px;
+    border-radius:8px;
+    background:rgba(232,185,35,0.1);
+    border:1px solid var(--tape-dark);
+    color:var(--tape);
+  }
+  .banner.error{
+    background:rgba(255,77,109,0.1);
+    border-color:var(--spot);
+    color:var(--spot);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="tape-corner tl"></div>
+  <div class="tape-corner tr"></div>
+  <h1 class="display">GAME NIGHT</h1>
+  <p class="sub">the weekly set list</p>
+  <p class="pass" id="passLine"></p>
+</div>
+
+<div class="search-wrap">
+  <input id="searchInput" type="text" placeholder="Search the set list…" autocomplete="off">
+</div>
+
+<div class="tabs" role="tablist">
+  <button class="tab" data-status="up_next" role="tab">ON DECK<span class="count" id="count-up_next">0</span></button>
+  <button class="tab" data-status="playing" role="tab">ON STAGE<span class="count" id="count-playing">0</span></button>
+  <button class="tab" data-status="played" role="tab">PLAYED IT<span class="count" id="count-played">0</span></button>
+</div>
+
+<div class="list" id="list"></div>
+
+<button class="fab" id="addBtn" aria-label="Add a game">+</button>
+
+<div id="modalRoot"></div>
+
+<script>
+(function(){
+
+  // ===== Config =====
+  // Get a free key at https://rawg.io/apidocs and paste it below.
+  // RAWG's API allows direct browser requests, so no proxy/Worker is needed.
+  const RAWG_API_KEY = "REPLACE_WITH_YOUR_RAWG_API_KEY";
+  const RAWG_PLATFORM_MAP = {
+    'PC': 'PC',
+    'PlayStation 5': 'PS5',
+    'PlayStation 4': 'PS5',
+    'Xbox Series S/X': 'Xbox',
+    'Xbox One': 'Xbox',
+    'Nintendo Switch': 'Switch',
+  };
+  function mapRawgPlatforms(platformsField){
+    if (!platformsField || platformsField.length === 0) return ['Other'];
+    const names = new Set();
+    platformsField.forEach(p => {
+      const name = p.platform && p.platform.name;
+      names.add(RAWG_PLATFORM_MAP[name] || 'Other');
+    });
+    return names.size > 0 ? Array.from(names) : ['Other'];
+  }
+
+  const PLATFORM_COLORS = { PC:'var(--pc)', PS5:'var(--ps5)', Xbox:'var(--xbox)', Switch:'var(--switch)', Other:'var(--other)' };
+  const STATUS_LABEL = { up_next:'On Deck', playing:'On Stage', played:'Played It' };
+  const STATUS_ORDER = ['up_next','playing','played'];
+
+  let state = {
+    myName: null,
+    games: [],
+    activeTab: 'up_next',
+    query: '',
+    loading: true,
+    loadError: null,
+    lastSynced: null,
+  };
+
+  const $ = (sel, root) => (root||document).querySelector(sel);
+  const $$ = (sel, root) => Array.from((root||document).querySelectorAll(sel));
+
+  function uid(){
+    return 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+  }
+
+  function timeAgo(ts){
+    const diff = Date.now() - ts;
+    const mins = Math.round(diff/60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hrs = Math.round(mins/60);
+    if (hrs < 24) return hrs + 'h ago';
+    const days = Math.round(hrs/24);
+    return days + 'd ago';
+  }
+
+  // ===== Storage =====
+  // Two different things with two different homes: the name is per-device and
+  // never leaves the phone, the set list is shared and lives in KV behind
+  // /api/games. localStorage works here because this is a real hosted page.
+  const NAME_KEY = 'game-night:my-name';
+
+  function loadName(){
+    try{
+      const saved = window.localStorage.getItem(NAME_KEY);
+      if (saved) state.myName = saved;
+    }catch(e){ /* blocked storage — they will just be asked for a name again */ }
+  }
+
+  function saveName(name){
+    state.myName = name;
+    try{
+      window.localStorage.setItem(NAME_KEY, name);
+    }catch(e){ console.error('Could not save name', e); }
+  }
+
+  async function fetchGames(){
+    const r = await fetch('/api/games', { headers: { 'Accept': 'application/json' } });
+    if (!r.ok) throw new Error('GET /api/games returned ' + r.status);
+    const body = await r.json();
+    return Array.isArray(body.games) ? body.games : [];
+  }
+
+  async function loadGames(){
+    state.loading = true;
+    state.loadError = null;
+    render();
+    try{
+      state.games = await fetchGames();
+      state.lastSynced = Date.now();
+    }catch(e){
+      state.loadError = 'Could not load the set list. Pull to refresh or try again.';
+    }
+    state.loading = false;
+    render();
+  }
+
+  let isPolling = false;
+  async function pollGames(){
+    if (isPolling || document.hidden) return;
+    isPolling = true;
+    try{
+      state.games = await fetchGames();
+      state.lastSynced = Date.now();
+      state.loadError = null;
+      render();
+    }catch(e){
+      // Silent failure — the next successful poll or manual refresh will recover.
+    }
+    isPolling = false;
+  }
+
+  function startPolling(){
+    setInterval(pollGames, 20000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) pollGames();
+    });
+  }
+
+  async function saveGame(game){
+    const r = await fetch('/api/games', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(game),
+    });
+    if (!r.ok){
+      console.error('POST /api/games returned ' + r.status);
+      throw new Error('Save failed');
+    }
+    // The write hands back the merged list, so saving doubles as a sync —
+    // someone else's addition lands without waiting for the next poll.
+    const body = await r.json();
+    if (Array.isArray(body.games)){
+      state.games = body.games;
+      state.lastSynced = Date.now();
+      render();
+    }
+  }
+
+  // ===== Actions =====
+  async function addGame({ title, platform, coverUrl, sourceId, year }){
+    const game = {
+      id: uid(),
+      title, platform, coverUrl: coverUrl || null, sourceId: sourceId || null, year: year || null,
+      status: 'up_next',
+      note: '',
+      addedBy: state.myName,
+      addedAt: Date.now(),
+      updatedAt: Date.now(),
+      updatedBy: state.myName,
+    };
+    state.games.unshift(game);
+    render();
+    try{
+      await saveGame(game);
+    }catch(e){
+      state.loadError = 'Added locally, but saving to the shared list failed — try again.';
+      render();
+    }
+  }
+
+  async function advanceStatus(game){
+    const idx = STATUS_ORDER.indexOf(game.status);
+    if (idx === STATUS_ORDER.length - 1) return;
+    game.status = STATUS_ORDER[idx+1];
+    game.updatedAt = Date.now();
+    game.updatedBy = state.myName;
+    render();
+    try{ await saveGame(game); }
+    catch(e){ state.loadError = 'Move failed to save — try again.'; render(); }
+  }
+
+  async function revertStatus(game){
+    const idx = STATUS_ORDER.indexOf(game.status);
+    if (idx === 0) return;
+    game.status = STATUS_ORDER[idx-1];
+    game.updatedAt = Date.now();
+    game.updatedBy = state.myName;
+    render();
+    try{ await saveGame(game); }
+    catch(e){ state.loadError = 'Move failed to save — try again.'; render(); }
+  }
+
+  // ===== Rendering =====
+  function renderPassLine(){
+    const el = $('#passLine');
+    const syncedBit = state.lastSynced ? ` · <span style="color:var(--ink-dim)">synced ${timeAgo(state.lastSynced)}</span>` : '';
+    if (state.myName){
+      el.innerHTML = `Playing as <strong style="color:var(--ink)">${escapeHtml(state.myName)}</strong> · <button id="changeNameBtn">change</button>${syncedBit}`;
+      $('#changeNameBtn').onclick = openNameModal;
+    } else {
+      el.innerHTML = syncedBit ? syncedBit.replace(/^ · /, '') : '';
+    }
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function coverEl(game){
+    if (game.coverUrl){
+      return `<div class="cover"><img src="${game.coverUrl}" alt=""></div>`;
+    }
+    const letter = (game.title || '?').trim()[0]?.toUpperCase() || '?';
+    return `<div class="cover">${letter}</div>`;
+  }
+
+  function tagEl(platform){
+    const color = PLATFORM_COLORS[platform] || PLATFORM_COLORS.Other;
+    return `<span class="tag" style="background:${color}">${platform}</span>`;
+  }
+
+  function stubEl(game){
+    const isNow = game.status === 'playing';
+    const canAdvance = game.status !== 'played';
+    const canRevert = game.status !== 'up_next';
+    const meta = [
+      tagEl(game.platform),
+      `by ${escapeHtml(game.addedBy || 'someone')}`,
+      timeAgo(game.updatedAt || game.addedAt),
+    ];
+    return `
+      <div class="stub ${isNow?'now':''}" data-id="${game.id}">
+        ${coverEl(game)}
+        <div class="stub-body">
+          <div class="stub-title">${escapeHtml(game.title)}${game.year ? ' <span style="color:var(--ink-dim);font-size:13px">('+game.year+')</span>' : ''}</div>
+          <div class="stub-meta">${meta.map(m=>`<span>${m}</span>`).join('<span>·</span>')}</div>
+          ${game.note ? `<div class="note">"${escapeHtml(game.note)}"</div>` : ''}
+        </div>
+        <div class="perf"></div>
+        <div class="stub-actions">
+          ${canAdvance ? `<button class="act-btn advance" data-action="advance" data-id="${game.id}" aria-label="Move to next stage" title="Move forward">›</button>` : ''}
+          ${canRevert ? `<button class="act-btn" data-action="revert" data-id="${game.id}" aria-label="Move back" title="Move back">‹</button>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  function render(){
+    renderPassLine();
+
+    $$('.tab').forEach(tab => {
+      const isActive = tab.dataset.status === state.activeTab;
+      tab.classList.toggle('active', isActive);
+    });
+    STATUS_ORDER.forEach(s => {
+      const n = state.games.filter(g => g.status === s).length;
+      const el = $('#count-'+s);
+      if (el) el.textContent = n;
+    });
+
+    const listEl = $('#list');
+    if (state.loading){
+      listEl.innerHTML = '<div class="status-msg">Loading the set list…</div>';
+      return;
+    }
+    if (state.loadError){
+      listEl.innerHTML = `<div class="banner error" style="margin-bottom:12px">${state.loadError}</div>`;
+    } else {
+      listEl.innerHTML = '';
+    }
+
+    let games = state.games.filter(g => g.status === state.activeTab);
+    if (state.query.trim()){
+      const q = state.query.trim().toLowerCase();
+      games = games.filter(g => g.title.toLowerCase().includes(q));
+    }
+
+    if (games.length === 0){
+      const emptyMsg = state.query.trim()
+        ? 'No games in this list match your search.'
+        : (state.activeTab === 'up_next' ? 'Nothing queued yet. Add a game to get the night started.'
+          : state.activeTab === 'playing' ? 'Nothing on stage right now.'
+          : 'Nothing played yet — the list starts here.');
+      listEl.insertAdjacentHTML('beforeend', `<div class="empty">${emptyMsg}</div>`);
+    } else {
+      listEl.insertAdjacentHTML('beforeend', games.map(stubEl).join(''));
+    }
+
+    $$('[data-action="advance"]', listEl).forEach(btn => {
+      btn.onclick = () => {
+        const g = state.games.find(x => x.id === btn.dataset.id);
+        if (g) advanceStatus(g);
+      };
+    });
+    $$('[data-action="revert"]', listEl).forEach(btn => {
+      btn.onclick = () => {
+        const g = state.games.find(x => x.id === btn.dataset.id);
+        if (g) revertStatus(g);
+      };
+    });
+  }
+
+  // ===== Name modal =====
+  function openNameModal(){
+    const root = $('#modalRoot');
+    root.innerHTML = `
+      <div class="overlay" id="nameOverlay">
+        <div class="modal" style="position:relative">
+          <h2 class="display">GET YOUR PASS</h2>
+          <p style="margin:0;font-size:13px;color:var(--ink-dim)">Pick the name your friends will see next to games you add or move.</p>
+          <div class="field">
+            <label for="nameInput">Your name</label>
+            <input id="nameInput" type="text" maxlength="24" placeholder="e.g. Sam" value="${escapeHtml(state.myName||'')}">
+          </div>
+          <button class="btn" id="saveNameBtn">Get pass</button>
+        </div>
+      </div>
+    `;
+    const input = $('#nameInput');
+    input.focus();
+    $('#saveNameBtn').onclick = async () => {
+      const val = input.value.trim();
+      if (!val) return;
+      await saveName(val);
+      root.innerHTML = '';
+      render();
+    };
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') $('#saveNameBtn').click(); });
+  }
+
+  // ===== Add-game modal =====
+  function openAddModal(){
+    const root = $('#modalRoot');
+    root.innerHTML = `
+      <div class="overlay" id="addOverlay">
+        <div class="modal" style="position:relative">
+          <button class="close" id="closeAdd" aria-label="Close">×</button>
+          <h2 class="display">ADD A GAME</h2>
+          <div class="field">
+            <label for="igdbSearch">Search for a game</label>
+            <input id="igdbSearch" type="text" placeholder="Start typing a title…" autocomplete="off">
+          </div>
+          <div id="searchStatus"></div>
+          <div id="searchResults"></div>
+          <div style="border-top:1px solid var(--line);padding-top:14px;margin-top:2px">
+            <p class="mono" style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-dim);margin:0 0 10px">Can't find it? Add manually</p>
+            <div class="field" style="margin-bottom:10px">
+              <label for="manualTitle">Title</label>
+              <input id="manualTitle" type="text" placeholder="Game title">
+            </div>
+            <div class="field" style="margin-bottom:10px">
+              <label for="manualPlatform">Platform</label>
+              <select id="manualPlatform">
+                <option>PC</option><option>PS5</option><option>Xbox</option><option>Switch</option><option>Other</option>
+              </select>
+            </div>
+            <button class="btn secondary" id="manualAddBtn" style="width:100%">Add to On Deck</button>
+          </div>
+        </div>
+      </div>
+    `;
+    $('#closeAdd').onclick = () => { root.innerHTML = ''; };
+    $('#addOverlay').addEventListener('click', e => { if (e.target.id === 'addOverlay') root.innerHTML = ''; });
+
+    $('#manualAddBtn').onclick = async () => {
+      const title = $('#manualTitle').value.trim();
+      const platform = $('#manualPlatform').value;
+      if (!title) return;
+      await addGame({ title, platform });
+      root.innerHTML = '';
+    };
+
+    let debounceTimer = null;
+    $('#igdbSearch').addEventListener('input', (e) => {
+      clearTimeout(debounceTimer);
+      const q = e.target.value.trim();
+      if (!q){ $('#searchResults').innerHTML = ''; $('#searchStatus').innerHTML = ''; return; }
+      debounceTimer = setTimeout(() => runIgdbSearch(q), 350);
+    });
+  }
+
+  async function runIgdbSearch(query){
+    const statusEl = $('#searchStatus');
+    const resultsEl = $('#searchResults');
+    if (!RAWG_API_KEY || RAWG_API_KEY === 'REPLACE_WITH_YOUR_RAWG_API_KEY'){
+      statusEl.innerHTML = `<div class="banner">Game lookup isn't connected yet — add the game manually below for now.</div>`;
+      resultsEl.innerHTML = '';
+      return;
+    }
+    statusEl.innerHTML = `<div class="status-msg" style="padding:8px 0">Searching…</div>`;
+    resultsEl.innerHTML = '';
+    try{
+      const url = 'https://api.rawg.io/api/games?key=' + encodeURIComponent(RAWG_API_KEY)
+        + '&search=' + encodeURIComponent(query) + '&page_size=10';
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('bad response');
+      const data = await res.json();
+      const results = (data.results || []).map(g => ({
+        sourceId: g.id,
+        title: g.name,
+        coverUrl: g.background_image || null,
+        platforms: mapRawgPlatforms(g.platforms),
+        year: g.released ? new Date(g.released).getFullYear() : null,
+      }));
+      statusEl.innerHTML = '';
+      if (results.length === 0){
+        resultsEl.innerHTML = `<div class="empty">No matches. Try a different search or add it manually below.</div>`;
+        return;
+      }
+      resultsEl.innerHTML = results.map(r => `
+        <div class="result-row" data-result='${escapeHtml(JSON.stringify(r))}'>
+          ${r.coverUrl ? `<div class="cover"><img src="${r.coverUrl}" alt=""></div>` : `<div class="cover">${(r.title||'?')[0]}</div>`}
+          <div>
+            <div class="rtitle">${escapeHtml(r.title)}${r.year ? ' <span style="color:var(--ink-dim)">('+r.year+')</span>' : ''}</div>
+            <div class="rmeta">${(r.platforms||[]).join(' · ')}</div>
+          </div>
+        </div>
+      `).join('');
+      $$('.result-row', resultsEl).forEach(row => {
+        row.onclick = async () => {
+          const r = JSON.parse(row.dataset.result);
+          await addGame({
+            title: r.title,
+            platform: (r.platforms && r.platforms[0]) || 'Other',
+            coverUrl: r.coverUrl,
+            sourceId: r.sourceId,
+            year: r.year,
+          });
+          $('#modalRoot').innerHTML = '';
+        };
+      });
+    }catch(e){
+      statusEl.innerHTML = `<div class="banner error">Couldn't reach the game database. Add it manually below instead.</div>`;
+    }
+  }
+
+  // ===== Init =====
+  function wireStatic(){
+    $$('.tab').forEach(tab => {
+      tab.onclick = () => { state.activeTab = tab.dataset.status; render(); };
+    });
+    $('#searchInput').addEventListener('input', e => { state.query = e.target.value; render(); });
+    $('#addBtn').onclick = () => {
+      if (!state.myName){ openNameModal(); return; }
+      openAddModal();
+    };
+  }
+
+  async function init(){
+    wireStatic();
+    await loadName();
+    if (!state.myName){ openNameModal(); }
+    render();
+    await loadGames();
+    startPolling();
+  }
+
+  init();
+})();
+</script>
+
+</body>
+</html>

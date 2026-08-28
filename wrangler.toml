@@ -1,0 +1,11 @@
+name = "game-night-tracker"
+compatibility_date = "2026-08-01"
+pages_build_output_dir = "public"
+
+# Created with: npm run kv:create
+# The binding name is read by functions/api/games.js as env.GAMES_KV.
+# Local dev uses a separate emulated store under .wrangler/, so nothing you
+# add while testing touches the real shared list.
+[[kv_namespaces]]
+binding = "GAMES_KV"
+id = "2193f8138c3941d88f0eece68f48c363"
