@@ -133,6 +133,21 @@ the local data on screen.
 The note UI landed here rather than in the add flow, because this is where you
 are already looking at one game.
 
+## Row width at phone size
+
+Titles were being truncated badly — the on-stage card showed "Bi…" for
+"Big Walk" — because the cards were designed on artboards wider than a phone.
+A 375px screen leaves about 311px inside a row, and each control takes 52px
+with its gap.
+
+Three changes: the on-stage card's buttons moved to their own row; ordinary
+titles may wrap to two lines; and delete came off the row entirely, which is
+what actually bought the space. Titles went from 132px to 184px, and nothing in
+the three lists clips now.
+
+The lesson for future work here: check a layout at 375px before calling it
+done. Artboard width is not phone width.
+
 ## Cost
 
 Still expected to be £0/month. With the single-key layout, four people polling

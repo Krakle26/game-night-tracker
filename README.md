@@ -174,9 +174,13 @@ the `addedBy`/`updatedBy` label on a game they touch.
 - A grid horizon is painted on `body::after`, fixed to the bottom of the
   viewport behind the content.
 - **On stage** is the one game being played and gets a card of its own: gradient
-  fill, magenta border and glow, a larger cover, a bigger title, all three
-  controls exposed, and a "NOW PLAYING" pill hung off the top edge via
-  `.stub.now::before`.
+  fill, magenta border and glow, a larger cover, a bigger title, and a
+  "NOW PLAYING" pill hung off the top edge via `.stub.now::before`. Its
+  controls sit on their own row — beside the title they left about 90px for it.
+- **A row carries one action.** Move forward, or move back on a played game.
+  Delete is in the detail sheet only. Every extra control costs roughly 52px of
+  title, which at phone width is the difference between reading a game's name
+  and reading two letters of it.
 - Tag pills tint themselves from a `--tagc` custom property set inline by
   `tagEl`, via `color-mix` — so a platform colour only has to be stated once.
 

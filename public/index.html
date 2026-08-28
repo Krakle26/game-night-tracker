@@ -188,6 +188,7 @@
 
   /* On stage: the game actually being played, and it should look like it. */
   .stub.now{
+    flex-wrap:wrap;
     margin-top:10px;
     padding:18px 16px 16px;
     border-color:rgba(255,60,172,0.7);
@@ -237,9 +238,27 @@
     font-size:17px;
     line-height:1.2;
     color:var(--ink);
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+    overflow-wrap:anywhere;
   }
-  .stub.now .stub-title{ font-size:23px; }
+  .stub.now .stub-title{
+    font-size:23px;
+    /* The card has its own row for buttons, so opt out of the two-line clamp. */
+    display:block;
+    -webkit-line-clamp:none;
+    overflow:visible;
+    line-height:1.15;
+  }
+  .stub.now .stub-actions{
+    flex:1 0 100%;
+    justify-content:flex-end;
+    margin-top:14px;
+    padding-top:14px;
+    border-top:1px solid rgba(255,255,255,0.12);
+  }
   .stub-meta{
     display:flex; align-items:center; gap:8px; flex-wrap:wrap;
     font-family:'Rajdhani', sans-serif;
@@ -855,7 +874,6 @@
         <div class="stub-actions">
           ${canAdvance ? `<button class="act-btn advance" data-action="advance" data-id="${game.id}" aria-label="Move to next stage" title="Move forward">›</button>` : ''}
           ${canRevert ? `<button class="act-btn" data-action="revert" data-id="${game.id}" aria-label="Move back" title="Move back">‹</button>` : ''}
-          <button class="act-btn danger" data-action="delete" data-id="${game.id}" aria-label="Delete ${escapeHtml(game.title)}" title="Delete">×</button>
         </div>
       </div>
     `;
@@ -917,12 +935,6 @@
       btn.onclick = () => {
         const g = state.games.find(x => x.id === btn.dataset.id);
         if (g) advanceStatus(g);
-      };
-    });
-    $$('[data-action="delete"]', listEl).forEach(btn => {
-      btn.onclick = () => {
-        const g = state.games.find(x => x.id === btn.dataset.id);
-        if (g) openDeleteModal(g);
       };
     });
     $$('[data-action="revert"]', listEl).forEach(btn => {
