@@ -109,6 +109,16 @@ The on-stage card is the one genuinely new piece of layout: `.stub.now` grows
 its padding, cover and title, and hangs a "NOW PLAYING" pill off its top edge
 through `::before`.
 
+## Home-screen icons
+
+Added after the retheme. A synthwave sun over the grid horizon — shapes only,
+no text, so it rasterises predictably and still reads at 40px.
+
+The iOS path is the fiddly one and is documented in the README: iOS reads only
+`apple-touch-icon`, ignores the manifest, and composites transparency onto
+black, so that one PNG comes from a square, flattened source rather than the
+rounded one.
+
 ## Cost
 
 Still expected to be £0/month. With the single-key layout, four people polling

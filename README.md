@@ -8,6 +8,8 @@ with games added by search (RAWG) or by hand, kept in sync across everyone's pho
 
 ```
 public/index.html         entire frontend, no build step
+public/manifest.json          home-screen install metadata
+public/icons/                 app icons (see "Adding it to a phone")
 functions/api/_middleware.js  gates every /api route on the shared pass code
 functions/api/games.js        GET the shared list, POST a game (add or move),
                               DELETE one by id
@@ -36,6 +38,35 @@ staring at an empty list.
 
 Rotating the code means running `npm run secret:put` again and telling
 everyone the new one — there is no other way back in.
+
+## Adding it to a phone
+
+Open the site and use "Add to Home Screen". It then launches without browser
+chrome (`display: standalone`), on the deep indigo the rest of the app uses.
+
+The icon is a synthwave sun over the grid horizon, drawn as SVG and rasterised
+to PNG with `sharp`:
+
+```
+icon.svg                 rounded, for the manifest's "any" purpose
+icon-square.svg          full bleed — the source for the iOS icon only
+icon-maskable.svg        full bleed, sun inside the safe circle
+apple-touch-icon.png     180px, flattened, no alpha
+icon-192.png, icon-512.png, icon-maskable-512.png
+```
+
+Three things about this that are easy to get wrong:
+
+- **iOS ignores the manifest's icons.** It reads `<link rel="apple-touch-icon">`
+  and nothing else, so the PNG is not optional.
+- **iOS ignores transparency**, compositing it onto black. The Apple icon is
+  therefore generated from the square source and flattened — a rounded source
+  would show dark wedges outside iOS's own rounding.
+- **Maskable is cropped** to whatever shape the launcher wants. The sun sits
+  inside the middle 80%; the grid deliberately bleeds off every edge, because
+  artwork scaled entirely inward just floats in a box.
+
+To regenerate after editing an SVG, rasterise with `sharp` at `density: 512`.
 
 ## Running it locally
 
