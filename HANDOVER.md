@@ -119,6 +119,20 @@ The iOS path is the fiddly one and is documented in the README: iOS reads only
 black, so that one PNG comes from a square, flattened source rather than the
 rounded one.
 
+## Game detail sheet
+
+Tapping a row opens it. Row taps and the action buttons share the row, so the
+handler ignores anything inside `.act-btn` — otherwise moving or deleting a
+game would also open its details.
+
+RAWG detail is fetched per game by `sourceId` and cached in a `Map` for the
+session, so reopening is free. The sheet renders from stored data immediately
+and fills in the rest asynchronously; if the fetch fails it says so and keeps
+the local data on screen.
+
+The note UI landed here rather than in the add flow, because this is where you
+are already looking at one game.
+
 ## Cost
 
 Still expected to be £0/month. With the single-key layout, four people polling

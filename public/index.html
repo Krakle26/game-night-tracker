@@ -429,6 +429,68 @@
     color:#FFA8D6;
   }
 
+  /* ---------- Game detail ---------- */
+  .stub{ cursor:pointer; }
+  .stub:hover{ border-color:rgba(33,212,253,0.55); }
+  .stub:active{ background:var(--paper-raised); }
+
+  .detail-banner{
+    width:calc(100% + 40px);
+    margin:-22px -20px 0;
+    aspect-ratio:16/9;
+    background:var(--grad);
+    overflow:hidden;
+    position:relative;
+  }
+  .detail-banner img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .detail-banner::after{
+    content:'';
+    position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(43,15,77,0) 45%, #2B0F4D 100%);
+  }
+  .detail-head h2{ margin:0; }
+  .detail-year{ font-size:15px; font-weight:600; color:var(--ink-dimmer); margin-top:2px; }
+
+  .chips{ display:flex; flex-wrap:wrap; gap:7px; }
+  .chip{
+    display:flex; align-items:center; gap:5px;
+    padding:5px 11px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:0.06em;
+    background:rgba(255,255,255,0.06);
+    border:1px solid var(--line-soft);
+    color:var(--ink-dim);
+  }
+  .chip.strong{ color:var(--tape); border-color:rgba(33,212,253,0.5); background:rgba(33,212,253,0.12); }
+  .chip.on{ color:#FFFFFF; border-color:transparent; background:var(--grad); }
+
+  .detail-label{
+    font-size:12px; font-weight:700; letter-spacing:0.16em;
+    text-transform:uppercase; color:var(--ink-dimmer);
+  }
+  .detail-desc{
+    font-size:15px; font-weight:500; line-height:1.65; color:var(--ink-dim);
+    white-space:pre-line;
+  }
+  .detail-actions{ display:flex; gap:9px; }
+  .detail-actions .btn{ flex:1; padding:15px 8px; font-size:12px; }
+  #noteInput{
+    width:100%;
+    background:var(--paper-raised);
+    border:1px solid var(--line-soft);
+    border-radius:12px;
+    padding:14px 16px;
+    color:var(--ink);
+    font-family:'Rajdhani', sans-serif;
+    font-weight:500;
+    font-size:16px;
+    resize:vertical;
+  }
+  #noteInput::placeholder{ color:var(--ink-dimmer); }
+  #noteInput:focus{ outline:none; border-color:var(--tape); box-shadow:0 0 18px rgba(33,212,253,0.28); }
+
   @media (prefers-reduced-motion: reduce){
     *{ animation:none !important; transition:none !important; }
   }
@@ -654,6 +716,26 @@
     }
   }
 
+  const detailCache = new Map();
+
+  async function fetchGameDetail(sourceId){
+    if (detailCache.has(sourceId)) return detailCache.get(sourceId);
+    const url = 'https://api.rawg.io/api/games/' + encodeURIComponent(sourceId)
+      + '?key=' + encodeURIComponent(RAWG_API_KEY);
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('RAWG detail returned ' + r.status);
+    const j = await r.json();
+    const detail = {
+      platforms: (j.platforms || []).map(x => x.platform && x.platform.name).filter(Boolean),
+      playtime: j.playtime || null,
+      metacritic: j.metacritic || null,
+      genres: (j.genres || []).map(x => x.name),
+      description: (j.description_raw || '').trim(),
+    };
+    detailCache.set(sourceId, detail);
+    return detail;
+  }
+
   // ===== Actions =====
   async function addGame({ title, platform, coverUrl, sourceId, year }){
     const game = {
@@ -710,6 +792,15 @@
       state.loadError = 'Could not delete that — try again.';
       render();
     }
+  }
+
+  async function saveNote(game, note){
+    const updated = Object.assign({}, game, {
+      note: note,
+      updatedAt: Date.now(),
+      updatedBy: state.myName,
+    });
+    await saveGame(updated);
   }
 
   // ===== Rendering =====
@@ -814,6 +905,14 @@
       listEl.insertAdjacentHTML('beforeend', games.map(stubEl).join(''));
     }
 
+    $$('.stub', listEl).forEach(row => {
+      row.onclick = (e) => {
+        // The action buttons own their taps; only the rest of the row opens.
+        if (e.target.closest('.act-btn')) return;
+        const g = state.games.find(x => x.id === row.dataset.id);
+        if (g) openGameModal(g);
+      };
+    });
     $$('[data-action="advance"]', listEl).forEach(btn => {
       btn.onclick = () => {
         const g = state.games.find(x => x.id === btn.dataset.id);
@@ -835,6 +934,109 @@
   }
 
   // ===== Name modal =====
+  function openGameModal(game){
+    const root = $('#modalRoot');
+    const cover = game.coverUrl
+      ? `<div class="detail-banner"><img src="${game.coverUrl}" alt=""></div>`
+      : '';
+    const canAdvance = game.status !== 'played';
+    const canRevert = game.status !== 'up_next';
+
+    root.innerHTML = `
+      <div class="overlay" id="detailOverlay">
+        <div class="modal" style="position:relative">
+          <button class="close" id="closeDetail" aria-label="Close">&#10005;</button>
+          ${cover}
+          <div class="detail-head">
+            <h2 class="display">${escapeHtml(game.title)}</h2>
+            <div class="detail-year">${game.year ? game.year + ' · ' : ''}${STATUS_LABEL[game.status]} · added by ${escapeHtml(game.addedBy || 'someone')}</div>
+          </div>
+
+          <div class="chips" id="detailChips">
+            ${tagEl(game.platform)}
+          </div>
+
+          <div id="detailInfo">
+            ${game.sourceId
+              ? '<div class="status-msg" style="padding:8px 0">Looking it up…</div>'
+              : '<div class="detail-desc" style="font-size:14px">Added by hand, so there is no database entry to pull details from.</div>'}
+          </div>
+
+          <div>
+            <div class="detail-label" style="margin-bottom:7px">Note for the group</div>
+            <textarea id="noteInput" rows="2" placeholder="e.g. 4-player co-op, needs Game Pass">${escapeHtml(game.note || '')}</textarea>
+            <button class="btn secondary" id="saveNoteBtn" style="margin-top:9px;width:100%">Save note</button>
+          </div>
+
+          <div class="detail-actions">
+            ${canRevert ? '<button class="btn secondary" id="detailBack">Move back</button>' : ''}
+            ${canAdvance ? '<button class="btn" id="detailFwd">' + (game.status === 'up_next' ? 'Put on stage' : 'Mark played') + '</button>' : ''}
+          </div>
+          <button class="btn secondary" id="detailDelete" style="color:var(--spot);border-color:rgba(255,60,172,0.5)">Delete this game</button>
+        </div>
+      </div>
+    `;
+
+    const close = () => { root.innerHTML = ''; };
+    $('#closeDetail').onclick = close;
+    $('#detailOverlay').addEventListener('click', e => { if (e.target.id === 'detailOverlay') close(); });
+
+    $('#saveNoteBtn').onclick = async () => {
+      const btn = $('#saveNoteBtn');
+      btn.textContent = 'Saving…';
+      try{
+        await saveNote(game, $('#noteInput').value.trim());
+        btn.textContent = 'Saved';
+      }catch(e){
+        btn.textContent = 'Could not save — try again';
+      }
+    };
+
+    if ($('#detailFwd')) $('#detailFwd').onclick = () => { close(); advanceStatus(game); };
+    if ($('#detailBack')) $('#detailBack').onclick = () => { close(); revertStatus(game); };
+    $('#detailDelete').onclick = () => { close(); openDeleteModal(game); };
+
+    if (game.sourceId) loadDetailInto(game);
+  }
+
+  /**
+   * The sheet opens on what we already know and fills in the rest when it
+   * arrives, so a slow or unreachable RAWG never holds up the group's own data.
+   */
+  async function loadDetailInto(game){
+    const infoEl = $('#detailInfo');
+    const chipsEl = $('#detailChips');
+    if (!infoEl) return;
+    try{
+      const d = await fetchGameDetail(game.sourceId);
+      if (!$('#detailInfo')) return;   // closed while we were waiting
+
+      const facts = [];
+      if (d.metacritic) facts.push('<span class="chip strong">' + d.metacritic + ' on Metacritic</span>');
+      if (d.playtime) facts.push('<span class="chip">~' + d.playtime + 'h to finish</span>');
+      if (chipsEl && facts.length) chipsEl.insertAdjacentHTML('beforeend', facts.join(''));
+
+      const parts = [];
+      if (d.platforms.length){
+        parts.push('<div><div class="detail-label" style="margin-bottom:7px">Playable on</div>'
+          + '<div class="chips">' + d.platforms.map(n => '<span class="chip">' + escapeHtml(n) + '</span>').join('') + '</div></div>');
+      }
+      if (d.genres.length){
+        parts.push('<div><div class="detail-label" style="margin-bottom:7px">Genres</div>'
+          + '<div class="chips">' + d.genres.map(n => '<span class="chip">' + escapeHtml(n) + '</span>').join('') + '</div></div>');
+      }
+      if (d.description){
+        parts.push('<div><div class="detail-label" style="margin-bottom:7px">About</div>'
+          + '<div class="detail-desc">' + escapeHtml(d.description) + '</div></div>');
+      }
+      infoEl.innerHTML = parts.length
+        ? '<div style="display:flex;flex-direction:column;gap:14px">' + parts.join('') + '</div>'
+        : '';
+    }catch(e){
+      if ($('#detailInfo')) infoEl.innerHTML = '<div class="banner">Could not reach the game database, so there is nothing extra to show right now.</div>';
+    }
+  }
+
   function openDeleteModal(game){
     const root = $('#modalRoot');
     root.innerHTML = `

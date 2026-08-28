@@ -124,6 +124,24 @@ does `DELETE /api/games?id=…`. Deleting something already gone returns 200
 rather than 404 — on a shared list two people removing the same game at once is
 a normal outcome, not an error either should see.
 
+## Game detail
+
+Tapping a row opens a sheet: the group's own data first, then whatever RAWG
+knows — score, average playtime, every platform it is on, genres and a
+description — fetched by `sourceId` and cached in memory for the session.
+
+Two things it deliberately does not do. It never blocks: the sheet opens on
+what is already stored and fills the rest in when it arrives, so a slow or
+unreachable RAWG costs nothing. And it never pretends: a game added by hand has
+no `sourceId`, so it says so rather than showing an empty space.
+
+"Playable on" is the part worth keeping. The row shows the single platform
+whoever added it picked; the sheet shows every platform the game is actually
+on, which is usually what decides whether the group can play it at all.
+
+The note lives here too — one field, saved as an ordinary upsert, so it syncs
+like any other change.
+
 ## Sync
 
 Polling every 20s, plus an immediate poll whenever the tab becomes visible again.
@@ -164,7 +182,6 @@ the `addedBy`/`updatedBy` label on a game they touch.
 
 ## Known gaps
 
-- **No notes UI.** The data model carries a `note` field with no way to set it.
 - **One code for everyone.** Anyone holding it can add, move and delete. There is
   no per-person identity behind the names, so ownership rules would be theatre.
   Rotating the code is the only revocation.
