@@ -236,6 +236,7 @@
   .act-btn:hover{ border-color:var(--tape); color:var(--tape); }
   .act-btn.advance{ border-color:var(--tape); color:var(--tape); }
   .act-btn:focus-visible{ outline:2px solid var(--tape); outline-offset:2px; }
+  .act-btn.danger:hover{ border-color:var(--spot); color:var(--spot); }
 
   /* ---------- FAB ---------- */
   .fab{
@@ -522,6 +523,20 @@
     }
   }
 
+  async function deleteGame(id){
+    const r = await fetch('/api/games?id=' + encodeURIComponent(id), { method: 'DELETE' });
+    if (!r.ok){
+      console.error('DELETE /api/games returned ' + r.status);
+      throw new Error('Delete failed');
+    }
+    const body = await r.json();
+    if (Array.isArray(body.games)){
+      state.games = body.games;
+      state.lastSynced = Date.now();
+      render();
+    }
+  }
+
   // ===== Actions =====
   async function addGame({ title, platform, coverUrl, sourceId, year }){
     const game = {
@@ -564,6 +579,20 @@
     render();
     try{ await saveGame(game); }
     catch(e){ state.loadError = 'Move failed to save — try again.'; render(); }
+  }
+
+  async function removeGame(game){
+    const previous = state.games;
+    state.games = state.games.filter(g => g.id !== game.id);
+    render();
+    try{
+      await deleteGame(game.id);
+    }catch(e){
+      // Put it back rather than leave the list lying about what is shared.
+      state.games = previous;
+      state.loadError = 'Could not delete that — try again.';
+      render();
+    }
   }
 
   // ===== Rendering =====
@@ -618,6 +647,7 @@
         <div class="stub-actions">
           ${canAdvance ? `<button class="act-btn advance" data-action="advance" data-id="${game.id}" aria-label="Move to next stage" title="Move forward">›</button>` : ''}
           ${canRevert ? `<button class="act-btn" data-action="revert" data-id="${game.id}" aria-label="Move back" title="Move back">‹</button>` : ''}
+          <button class="act-btn danger" data-action="delete" data-id="${game.id}" aria-label="Delete ${escapeHtml(game.title)}" title="Delete">×</button>
         </div>
       </div>
     `;
@@ -670,6 +700,12 @@
         if (g) advanceStatus(g);
       };
     });
+    $$('[data-action="delete"]', listEl).forEach(btn => {
+      btn.onclick = () => {
+        const g = state.games.find(x => x.id === btn.dataset.id);
+        if (g) openDeleteModal(g);
+      };
+    });
     $$('[data-action="revert"]', listEl).forEach(btn => {
       btn.onclick = () => {
         const g = state.games.find(x => x.id === btn.dataset.id);
@@ -679,6 +715,29 @@
   }
 
   // ===== Name modal =====
+  function openDeleteModal(game){
+    const root = $('#modalRoot');
+    root.innerHTML = `
+      <div class="overlay" id="deleteOverlay">
+        <div class="modal" style="position:relative">
+          <h2 class="display">DROP FROM THE BILL?</h2>
+          <p style="margin:0;font-size:13px;color:var(--ink-dim)">
+            <strong style="color:var(--ink)">${escapeHtml(game.title)}</strong>
+            will be removed for everyone. This cannot be undone.
+          </p>
+          <div style="display:flex;gap:10px;margin-top:4px">
+            <button class="btn" id="cancelDeleteBtn" style="flex:1;background:none;border:1px solid var(--line);color:var(--ink)">Keep it</button>
+            <button class="btn" id="confirmDeleteBtn" style="flex:1;background:var(--spot);color:#16161A">Delete</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const close = () => { root.innerHTML = ''; };
+    $('#cancelDeleteBtn').onclick = close;
+    $('#deleteOverlay').addEventListener('click', e => { if (e.target.id === 'deleteOverlay') close(); });
+    $('#confirmDeleteBtn').onclick = () => { close(); removeGame(game); };
+  }
+
   function openNameModal(){
     const root = $('#modalRoot');
     root.innerHTML = `

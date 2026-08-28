@@ -8,7 +8,8 @@ with games added by search (RAWG) or by hand, kept in sync across everyone's pho
 
 ```
 public/index.html         entire frontend, no build step
-functions/api/games.js    GET the shared list, POST a game (add or move)
+functions/api/games.js    GET the shared list, POST a game (add or move),
+                          DELETE one by id
 wrangler.toml             Pages config + the GAMES_KV binding
 ```
 
@@ -63,7 +64,10 @@ The tradeoff is that every write rewrites the whole array, so two people adding 
 game in the same instant can lose one of the two. For a weekly game night that
 window is not worth a Durable Object.
 
-`POST /api/games` returns the merged list, so saving doubles as a sync.
+`POST /api/games` returns the merged list, so saving doubles as a sync, and so
+does `DELETE /api/games?id=…`. Deleting something already gone returns 200
+rather than 404 — on a shared list two people removing the same game at once is
+a normal outcome, not an error either should see.
 
 ## Sync
 
@@ -93,7 +97,6 @@ the `addedBy`/`updatedBy` label on a game they touch.
 
 ## Known gaps
 
-- **No delete.** Games move between lists but cannot be removed.
 - **No notes UI.** The data model carries a `note` field with no way to set it.
 - **The API is open.** Anyone who can reach the URL can read and write the list.
   That follows from the no-accounts design; the sibling UK release tracker gates

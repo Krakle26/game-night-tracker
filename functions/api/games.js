@@ -57,6 +57,36 @@ export async function onRequestGet({ env }) {
 }
 
 /**
+ * Remove a game for everyone. The id rides in the query string rather than a
+ * body, since a DELETE body is unevenly supported by intermediaries.
+ *
+ * Deleting something already gone returns 200, not 404 — same replay-safe
+ * contract as POST. Two people deleting the same game at once is a normal
+ * outcome on a shared list, not an error either of them should see.
+ */
+export async function onRequestDelete({ request, env }) {
+  if (!env.GAMES_KV) {
+    return json({ error: 'Server misconfigured: GAMES_KV is not bound' }, 500);
+  }
+
+  const id = new URL(request.url).searchParams.get('id');
+  if (!id) {
+    return json({ error: 'id query parameter is required' }, 400);
+  }
+
+  const games = await readCatalog(env);
+  const kept = games.filter((g) => g.id !== id);
+
+  // Skip the write when nothing changed, so a duplicate delete does not burn
+  // one of the free tier's 1,000 daily writes.
+  if (kept.length !== games.length) {
+    await env.GAMES_KV.put(KEY, JSON.stringify(kept));
+  }
+
+  return json({ games: kept, deleted: kept.length !== games.length });
+}
+
+/**
  * Upsert by id, so this one route covers both adding a game and moving one
  * between lists. Replaying the same POST lands on the same result, which is
  * what makes the client's retry-on-failure safe.

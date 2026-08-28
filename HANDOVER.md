@@ -65,6 +65,18 @@ Two things changed in the rebuild:
   storage not remembering anonymous viewers. On a real hosted page plain
   `localStorage` does the job, so the name no longer rides in the URL.
 
+## Delete
+
+Added after the first deploy. `DELETE /api/games?id=…` drops a game for
+everyone; the `×` on each ticket stub opens a confirm dialog naming the game
+first, since a mis-tap on a phone would otherwise silently destroy something a
+friend added. The removal is optimistic and rolls back with an error if the
+write fails, so the list never claims something is gone when it is not.
+
+There is deliberately no restriction on who may delete what. Names are
+self-declared with no accounts behind them, so enforcing ownership would be
+theatre rather than a control.
+
 ## Cost
 
 Still expected to be £0/month. With the single-key layout, four people polling
