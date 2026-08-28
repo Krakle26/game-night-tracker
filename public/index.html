@@ -420,6 +420,7 @@
     loading: true,
     loadError: null,
     lastSynced: null,
+    needsPass: false,
   };
 
   const $ = (sel, root) => (root||document).querySelector(sel);
@@ -445,6 +446,43 @@
   // never leaves the phone, the set list is shared and lives in KV behind
   // /api/games. localStorage works here because this is a real hosted page.
   const NAME_KEY = 'game-night:my-name';
+  const TOKEN_KEY = 'game-night:pass-code';
+
+  function loadToken(){
+    try{ return window.localStorage.getItem(TOKEN_KEY); }
+    catch(e){ return null; }
+  }
+
+  function saveToken(code){
+    try{ window.localStorage.setItem(TOKEN_KEY, code); }
+    catch(e){ console.error('Could not save the pass code', e); }
+  }
+
+  function clearToken(){
+    try{ window.localStorage.removeItem(TOKEN_KEY); }
+    catch(e){ /* nothing we can do */ }
+  }
+
+  /**
+   * Every call to /api goes through here so the pass code is attached in one
+   * place. A 401 means the code was rotated or mistyped — drop it and send
+   * them back to the gate rather than leaving them staring at an empty list.
+   */
+  async function apiFetch(url, options){
+    const opts = Object.assign({}, options);
+    opts.headers = Object.assign({}, opts.headers, { 'X-App-Token': loadToken() || '' });
+    const r = await fetch(url, opts);
+    if (r.status === 401){
+      clearToken();
+      state.needsPass = true;
+      state.loading = false;
+      state.loadError = null;
+      render();
+      openPassModal('That pass code was rejected. Check it and try again.');
+      throw new Error('Unauthorized');
+    }
+    return r;
+  }
 
   function loadName(){
     try{
@@ -461,7 +499,7 @@
   }
 
   async function fetchGames(){
-    const r = await fetch('/api/games', { headers: { 'Accept': 'application/json' } });
+    const r = await apiFetch('/api/games', { headers: { 'Accept': 'application/json' } });
     if (!r.ok) throw new Error('GET /api/games returned ' + r.status);
     const body = await r.json();
     return Array.isArray(body.games) ? body.games : [];
@@ -496,15 +534,19 @@
     isPolling = false;
   }
 
+  let pollTimer = null;
   function startPolling(){
-    setInterval(pollGames, 20000);
+    // Re-entered whenever a rejected pass code is retried; without this each
+    // attempt would stack another interval and multiply the poll rate.
+    if (pollTimer) return;
+    pollTimer = setInterval(pollGames, 20000);
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) pollGames();
     });
   }
 
   async function saveGame(game){
-    const r = await fetch('/api/games', {
+    const r = await apiFetch('/api/games', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(game),
@@ -524,7 +566,7 @@
   }
 
   async function deleteGame(id){
-    const r = await fetch('/api/games?id=' + encodeURIComponent(id), { method: 'DELETE' });
+    const r = await apiFetch('/api/games?id=' + encodeURIComponent(id), { method: 'DELETE' });
     if (!r.ok){
       console.error('DELETE /api/games returned ' + r.status);
       throw new Error('Delete failed');
@@ -738,12 +780,51 @@
     $('#confirmDeleteBtn').onclick = () => { close(); removeGame(game); };
   }
 
+  function openPassModal(message){
+    const root = $('#modalRoot');
+    root.innerHTML = `
+      <div class="overlay" id="passOverlay">
+        <div class="modal" style="position:relative">
+          <h2 class="display">GET YOUR PASS</h2>
+          ${message ? `<p style="margin:0;font-size:13px;color:var(--spot)">${escapeHtml(message)}</p>` : ''}
+          <p style="margin:0;font-size:13px;color:var(--ink-dim)">The set list is private. Enter the pass code the group shares, and the name your friends will see.</p>
+          <div class="field">
+            <label for="passInput">Pass code</label>
+            <input id="passInput" type="text" autocomplete="off" spellcheck="false" placeholder="Paste the code">
+          </div>
+          <div class="field">
+            <label for="passNameInput">Your name</label>
+            <input id="passNameInput" type="text" maxlength="24" placeholder="e.g. Sam" value="${escapeHtml(state.myName||'')}">
+          </div>
+          <button class="btn" id="enterBtn">Let me in</button>
+        </div>
+      </div>
+    `;
+
+    const submit = async () => {
+      const code = $('#passInput').value.trim();
+      const name = $('#passNameInput').value.trim();
+      if (!code || !name) return;
+      saveName(name);
+      saveToken(code);
+      state.needsPass = false;
+      $('#modalRoot').innerHTML = '';
+      // A wrong code 401s inside loadGames, which reopens this with an error.
+      try{ await loadGames(); startPolling(); }catch(e){ /* handled by apiFetch */ }
+    };
+
+    $('#enterBtn').onclick = submit;
+    $('#passInput').addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+    $('#passNameInput').addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+    $('#passInput').focus();
+  }
+
   function openNameModal(){
     const root = $('#modalRoot');
     root.innerHTML = `
       <div class="overlay" id="nameOverlay">
         <div class="modal" style="position:relative">
-          <h2 class="display">GET YOUR PASS</h2>
+          <h2 class="display">CHANGE YOUR NAME</h2>
           <p style="margin:0;font-size:13px;color:var(--ink-dim)">Pick the name your friends will see next to games you add or move.</p>
           <div class="field">
             <label for="nameInput">Your name</label>
@@ -885,10 +966,19 @@
 
   async function init(){
     wireStatic();
-    await loadName();
-    if (!state.myName){ openNameModal(); }
+    loadName();
     render();
-    await loadGames();
+
+    if (!loadToken()){
+      state.needsPass = true;
+      state.loading = false;
+      render();
+      openPassModal();
+      return;
+    }
+    if (!state.myName){ openNameModal(); }
+
+    try{ await loadGames(); }catch(e){ return; }
     startPolling();
   }
 

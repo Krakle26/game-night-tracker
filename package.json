@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "wrangler pages dev",
     "deploy": "wrangler pages deploy",
-    "kv:create": "wrangler kv namespace create GAMES_KV"
+    "kv:create": "wrangler kv namespace create GAMES_KV",
+    "token": "node -e \"console.log(require('crypto').randomBytes(24).toString('base64url'))\"",
+    "secret:put": "wrangler pages secret put APP_TOKEN"
   },
   "devDependencies": {
     "wrangler": "^4.124.0"

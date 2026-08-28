@@ -8,10 +8,34 @@ with games added by search (RAWG) or by hand, kept in sync across everyone's pho
 
 ```
 public/index.html         entire frontend, no build step
-functions/api/games.js    GET the shared list, POST a game (add or move),
-                          DELETE one by id
+functions/api/_middleware.js  gates every /api route on the shared pass code
+functions/api/games.js        GET the shared list, POST a game (add or move),
+                              DELETE one by id
 wrangler.toml             Pages config + the GAMES_KV binding
 ```
+
+## The pass code
+
+Every `/api` route is gated on a single shared code. There are no accounts —
+there is nothing per-person to authenticate, only "are you one of us".
+
+Generate one, then set it in both places:
+
+```bash
+npm run token                 # prints a code
+npm run secret:put            # paste it in for production
+```
+
+For local development put the same value in `.dev.vars` as `APP_TOKEN=…`
+(copy `.dev.vars.example`). That file is gitignored and must stay that way.
+
+Everyone enters the code once per device on first visit, alongside their name.
+It is kept in `localStorage`; a rotated or mistyped code returns a 401, which
+clears the stored copy and sends them back to the gate rather than leaving them
+staring at an empty list.
+
+Rotating the code means running `npm run secret:put` again and telling
+everyone the new one — there is no other way back in.
 
 ## Running it locally
 
@@ -98,7 +122,6 @@ the `addedBy`/`updatedBy` label on a game they touch.
 ## Known gaps
 
 - **No notes UI.** The data model carries a `note` field with no way to set it.
-- **The API is open.** Anyone who can reach the URL can read and write the list.
-  That follows from the no-accounts design; the sibling UK release tracker gates
-  its `/api` routes with a shared token in `_middleware.js` if this ever needs
-  the same.
+- **One code for everyone.** Anyone holding it can add, move and delete. There is
+  no per-person identity behind the names, so ownership rules would be theatre.
+  Rotating the code is the only revocation.

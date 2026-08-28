@@ -77,6 +77,22 @@ There is deliberately no restriction on who may delete what. Names are
 self-declared with no accounts behind them, so enforcing ownership would be
 theatre rather than a control.
 
+## The pass code
+
+Added after the delete work, once the repo went public and made the
+`.pages.dev` URL discoverable from it. `functions/api/_middleware.js` gates
+every `/api` route against `APP_TOKEN`, comparing hashes so the check runs in
+constant time and cannot leak the code's prefix through response timing.
+
+The static page stays public. Gating the HTML would achieve nothing when the
+data routes can be called directly, and the page holds nothing secret.
+
+The gate folds into the first-run screen that already existed for names, so
+setup is still one screen. A 401 anywhere clears the stored code and reopens it.
+
+This does **not** protect the RAWG key, which still ships in the page and is
+still in this repo's history.
+
 ## Cost
 
 Still expected to be £0/month. With the single-key layout, four people polling

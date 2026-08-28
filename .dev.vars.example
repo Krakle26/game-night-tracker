@@ -1,0 +1,6 @@
+# Copy to .dev.vars for local development. Never commit the real file.
+# .dev.vars is gitignored; on Cloudflare this goes in as an encrypted secret
+# instead, with: npx wrangler pages secret put APP_TOKEN
+
+# The shared pass code that gates /api. Generate one with: npm run token
+APP_TOKEN=
