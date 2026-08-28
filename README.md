@@ -33,16 +33,17 @@ The KV namespace already exists and is bound in `wrangler.toml` — it was creat
 once with `npm run kv:create`. The binding must stay named `GAMES_KV`, which is
 what `functions/api/games.js` reads as `env.GAMES_KV`.
 
-## Before it works: the RAWG key
+## The RAWG key
 
-Search is powered by [RAWG](https://rawg.io/apidocs). Get a free key and paste it
-into `public/index.html`, replacing the placeholder near the top of the `<script>`:
+Search is powered by [RAWG](https://rawg.io/apidocs). A key is already set near
+the top of the `<script>` in `public/index.html`:
 
 ```js
-const RAWG_API_KEY = "REPLACE_WITH_YOUR_RAWG_API_KEY";
+const RAWG_API_KEY = "...";
 ```
 
-Until then, adding by search shows an error and adding by hand still works.
+Replacing it is a one-line edit. With the placeholder back in, search reports an
+error and adding by hand still works.
 
 The key ships in the page and is visible to anyone who opens it — accepted for a
 small private group. Moving the call server-side into a Function, with the key as

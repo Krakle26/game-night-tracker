@@ -16,14 +16,17 @@ Built and committed locally; **not yet pushed and not yet deployed**.
 - KV namespace `GAMES_KV` created (`2193f8138c3941d88f0eece68f48c363`) and bound
   in `wrangler.toml`.
 - Deploy path chosen: **wrangler CLI**, not the dashboard's Git integration.
+- A fresh RAWG key is in `public/index.html`; search verified working against the
+  live API (results, cover art, year and platform all landing in KV).
+- The project folder is `DocumentsGame Night Tracker`. The Cloudflare project
+  name, npm package name and repo slug all stay `game-night-tracker`, since the
+  Pages name sets the `.pages.dev` subdomain.
 
 ## Still to do
 
-1. Paste a RAWG key into `public/index.html` — search is dead until then, though
-   adding games by hand works. See the README.
-2. `npm run deploy`.
-3. `git push` to the GitHub repo above (still empty).
-4. End-to-end check: add a game, open the URL on a second device, confirm it syncs.
+1. `npm run deploy`.
+2. `git push` to the GitHub repo above (still empty).
+3. End-to-end check: add a game, open the URL on a second device, confirm it syncs.
 
 ## Corrections to HANDOVER_1
 
