@@ -727,7 +727,7 @@
   function escapeHtml(str){
     const d = document.createElement('div');
     d.textContent = str;
-    return d.innerHTML;
+    return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   function coverEl(game){
@@ -1003,8 +1003,8 @@
         resultsEl.innerHTML = `<div class="empty">No matches. Try a different search or add it manually below.</div>`;
         return;
       }
-      resultsEl.innerHTML = results.map(r => `
-        <div class="result-row" data-result='${escapeHtml(JSON.stringify(r))}'>
+      resultsEl.innerHTML = results.map((r, i) => `
+        <div class="result-row" data-idx="${i}">
           ${r.coverUrl ? `<div class="cover"><img src="${r.coverUrl}" alt=""></div>` : `<div class="cover">${(r.title||'?')[0]}</div>`}
           <div>
             <div class="rtitle">${escapeHtml(r.title)}${r.year ? ' <span style="color:var(--ink-dim)">('+r.year+')</span>' : ''}</div>
@@ -1014,7 +1014,8 @@
       `).join('');
       $$('.result-row', resultsEl).forEach(row => {
         row.onclick = async () => {
-          const r = JSON.parse(row.dataset.result);
+          const r = results[Number(row.dataset.idx)];
+          if (!r) return;
           await addGame({
             title: r.title,
             platform: (r.platforms && r.platforms[0]) || 'Other',
