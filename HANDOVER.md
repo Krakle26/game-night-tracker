@@ -93,6 +93,22 @@ setup is still one screen. A 401 anywhere clears the stored code and reopens it.
 This does **not** protect the RAWG key, which still ships in the page and is
 still in this repo's history.
 
+## The Neon Grid redesign
+
+The backstage/setlist identity was replaced wholesale. Directions were explored
+on a design canvas (arcade cabinet, phosphor terminal, synthwave) and Neon Grid
+was chosen, then ported into `public/index.html`.
+
+Class names were kept identical throughout, so the port is almost entirely the
+stylesheet: the JS touched only in `tagEl` (pills now tint from a `--tagc`
+property rather than taking a solid background), the empty state (a drawn
+gamepad), and three modal headings. `.perf` — the ticket-stub perforation —
+is retained in the markup but hidden, since nothing else depends on it.
+
+The on-stage card is the one genuinely new piece of layout: `.stub.now` grows
+its padding, cover and title, and hangs a "NOW PLAYING" pill off its top edge
+through `::before`.
+
 ## Cost
 
 Still expected to be £0/month. With the single-key layout, four people polling

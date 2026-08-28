@@ -107,17 +107,29 @@ the `addedBy`/`updatedBy` label on a game they touch.
 
 ## Design system
 
-"Backstage / gig setlist" — dark, paper-and-tape:
+"Neon Grid" — synthwave arcade. Replaced the original backstage/setlist theme
+(gaffer tape, torn paper, ticket stubs) in full.
 
-- Near-black charcoal background (`#16161A`), paper panels (`#1F1F24`),
-  gaffer-tape yellow accent (`#E8B923`), hot-pink "on stage now" (`#FF4D6D`).
-  Platform tags carry their own colours: PC cyan, PS5 indigo, Xbox green,
-  Switch red, Other orange.
-- 'Bebas Neue' for headers and titles, 'Work Sans' for body, 'JetBrains Mono'
-  for metadata (added-by, timestamps, tags).
-- Each game is a "ticket stub" row: a dashed perforated divider between the info
-  and the buttons, and a cover thumbnail or a coloured letter tile.
-- The masthead has torn-paper/tape-corner styling.
+- Deep indigo ground shading `#2B0F4D` to `#0B0520`, magenta `#FF3CAC`,
+  violet `#7B2FF7`, cyan `#21D4FD`. Platform tags keep their own colours —
+  PC cyan, PS5 indigo, Xbox green, Switch red, Other orange — because everyone
+  already reads them at a glance.
+- **The colours mean things.** The magenta-to-violet gradient (`--grad`) marks
+  anything actionable: the selected tab, primary buttons, the FAB, the on-stage
+  card. Cyan marks anything informational: focused fields, the forward arrow.
+  Keep that split when adding UI.
+- 'Orbitron' (800) for display type, 'Rajdhani' for everything else. Rajdhani
+  runs small, so body copy sits at 15-17px rather than the 13px you would use
+  with a normal UI face.
+- Rounded cards and pill shapes throughout; every control is at least 44px.
+- A grid horizon is painted on `body::after`, fixed to the bottom of the
+  viewport behind the content.
+- **On stage** is the one game being played and gets a card of its own: gradient
+  fill, magenta border and glow, a larger cover, a bigger title, all three
+  controls exposed, and a "NOW PLAYING" pill hung off the top edge via
+  `.stub.now::before`.
+- Tag pills tint themselves from a `--tagc` custom property set inline by
+  `tagEl`, via `color-mix` — so a platform colour only has to be stated once.
 
 ## Known gaps
 
