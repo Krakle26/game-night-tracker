@@ -79,6 +79,49 @@ npm run dev
 http://localhost:8788, against an emulated KV store under `.wrangler/`. Nothing
 you add while testing touches the real shared list.
 
+## Working on it from another machine
+
+Everything needed is committed except two things, both deliberately: the pass
+code and Cloudflare credentials.
+
+```bash
+git clone https://github.com/Krakle26/game-night-tracker.git
+cd game-night-tracker
+npm install
+cp .dev.vars.example .dev.vars     # then put the group's pass code in it
+npm run dev
+```
+
+Without `.dev.vars` the app loads but every `/api` call returns 500, because
+the middleware refuses to run with no `APP_TOKEN` set. That is the failure to
+expect if you skip this step.
+
+Local dev runs against an **emulated** KV store under `.wrangler/`, so nothing
+you do while developing touches the real shared list. The pass code in
+`.dev.vars` therefore does not have to match production — but using the same
+one saves you re-entering a different code in the browser.
+
+### Deploying from somewhere without a browser
+
+`npm run deploy` normally uses an OAuth token wrangler stored when you logged
+in through a browser. A headless environment cannot do that, so create an API
+token instead (Cloudflare dashboard → My Profile → API Tokens → Create Token)
+with these account permissions:
+
+- **Cloudflare Pages: Edit** — to deploy
+- **Workers KV Storage: Edit** — to read or change the namespace
+
+Then set it in the environment before deploying:
+
+```bash
+export CLOUDFLARE_API_TOKEN=...
+export CLOUDFLARE_ACCOUNT_ID=...
+npm run deploy
+```
+
+The account id is on the right-hand side of the Cloudflare dashboard overview.
+Neither value belongs in the repo.
+
 ## Deploying
 
 ```bash
