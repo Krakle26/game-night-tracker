@@ -39,6 +39,43 @@ async function readCatalog(env) {
   }
 }
 
+const BACKUP_PREFIX = 'catalog:backup:';
+const BACKUP_RETENTION_DAYS = 30;
+
+/**
+ * Keeps one snapshot of the catalog per UTC day, taken just before that day's
+ * first write. A single KV key with no history otherwise has no way back if
+ * a write goes wrong — a fat-fingered delete, a bug, a corrupted value.
+ *
+ * Deliberately one snapshot a day, not one per write: with several writes an
+ * evening, anything finer would burn through the free tier's write quota for
+ * no real benefit over a single known-good copy from before today started.
+ * Restoring is a manual `wrangler kv key put` from the backup key — see the
+ * README — since a recovery this rare doesn't earn its own UI or auth.
+ */
+async function snapshotBeforeWrite(env, catalogBeforeWrite) {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD, UTC
+  const key = BACKUP_PREFIX + today;
+  const already = await env.GAMES_KV.get(key);
+  if (already) return;
+
+  await env.GAMES_KV.put(key, JSON.stringify(catalogBeforeWrite));
+
+  // Pruning here, on the one write a day that takes a snapshot, stands in
+  // for a scheduled job — Pages Functions have no cron of their own to prune
+  // on. The extra list + deletes cost nothing worth worrying about at this
+  // frequency.
+  const cutoff = Date.now() - BACKUP_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  const { keys } = await env.GAMES_KV.list({ prefix: BACKUP_PREFIX });
+  for (const k of keys) {
+    const day = k.name.slice(BACKUP_PREFIX.length);
+    const t = Date.parse(day);
+    if (!Number.isNaN(t) && t < cutoff) {
+      await env.GAMES_KV.delete(k.name);
+    }
+  }
+}
+
 const STATUSES = new Set(['up_next', 'playing', 'played']);
 
 function invalidGame(game) {
@@ -80,6 +117,7 @@ export async function onRequestDelete({ request, env }) {
   // Skip the write when nothing changed, so a duplicate delete does not burn
   // one of the free tier's 1,000 daily writes.
   if (kept.length !== games.length) {
+    await snapshotBeforeWrite(env, games);
     await env.GAMES_KV.put(KEY, JSON.stringify(kept));
   }
 
@@ -107,6 +145,8 @@ export async function onRequestPost({ request, env }) {
   if (problem) return json({ error: problem }, 400);
 
   const games = await readCatalog(env);
+  await snapshotBeforeWrite(env, games.slice());
+
   const at = games.findIndex((g) => g.id === game.id);
   if (at === -1) games.push(game);
   else games[at] = game;

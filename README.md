@@ -167,6 +167,30 @@ does `DELETE /api/games?id=…`. Deleting something already gone returns 200
 rather than 404 — on a shared list two people removing the same game at once is
 a normal outcome, not an error either should see.
 
+## Backups
+
+A single KV key with no history has no way back if a write goes wrong — a
+fat-fingered delete, a bug, a corrupted value. Every write that actually
+changes the catalog first checks for a snapshot under `catalog:backup:<today's
+date>` and, if today doesn't have one yet, writes the pre-write catalog there
+before making the change. One a day, not one a write — with several writes an
+evening that would just burn quota for no benefit over one known-good copy
+from before today started. Backups older than 30 days are pruned on the same
+write that takes the next one, standing in for a scheduled job, since Pages
+Functions have no cron of their own.
+
+Restoring is manual — this happens rarely enough that it doesn't earn its own
+UI or auth:
+
+```bash
+# See what's available
+wrangler kv key list --binding=GAMES_KV --remote --prefix="catalog:backup:"
+
+# Pull a day's snapshot down, then push it back as the live catalog
+wrangler kv key get "catalog:backup:2026-09-04" --binding=GAMES_KV --remote > backup.json
+wrangler kv key put catalog --binding=GAMES_KV --remote --path=backup.json
+```
+
 ## Game detail
 
 Tapping a row opens a sheet: the group's own data first, then whatever RAWG
