@@ -715,6 +715,15 @@
       openPassModal('That pass code was rejected. Check it and try again.');
       throw new Error('Unauthorized');
     }
+    if (r.status === 429){
+      // Too many wrong codes from this network recently — not necessarily
+      // this device's fault (a shared code, a shared IP), so unlike a 401
+      // this doesn't clear the stored code or reopen the pass gate.
+      state.loading = false;
+      state.loadError = 'Too many attempts from this network — wait a few minutes and try again.';
+      render();
+      throw new Error('Rate limited');
+    }
     return r;
   }
 

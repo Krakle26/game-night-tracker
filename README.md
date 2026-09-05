@@ -39,6 +39,14 @@ staring at an empty list.
 Rotating the code means running `npm run secret:put` again and telling
 everyone the new one — there is no other way back in.
 
+Ten wrong codes from the same IP within five minutes locks that IP out for the
+rest of the window (`429`, every request rejected — correct codes included —
+until it passes), tracked in KV under an `authfail:` prefix with a TTL so it
+self-cleans. The code is a 192-bit random token, so this isn't closing a
+crackable brute force; it stops a script from hammering the endpoint at
+network speed for free. A success clears the count immediately, so a few
+mistyped attempts followed by the right code never trips it.
+
 ## Adding it to a phone
 
 Open the site and use "Add to Home Screen". It then launches without browser
