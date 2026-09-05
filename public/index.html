@@ -910,7 +910,7 @@
     return `<span class="tag" style="--tagc:${color}">${platform}</span>`;
   }
 
-  function stubEl(game){
+  function stubEl(game, showStatus){
     const isNow = game.status === 'playing';
     const canAdvance = game.status !== 'played';
     const canRevert = game.status !== 'up_next';
@@ -919,6 +919,9 @@
       `by ${escapeHtml(game.addedBy || 'someone')}`,
       timeAgo(game.updatedAt || game.addedAt),
     ];
+    // Only relevant once search mixes rows from all three lists together —
+    // inside a single tab the status is already implied by being there.
+    if (showStatus) meta.splice(1, 0, STATUS_LABEL[game.status]);
     return `
       <div class="stub ${isNow?'now':''}" data-id="${game.id}">
         ${coverEl(game)}
@@ -957,25 +960,29 @@
       listEl.innerHTML = '<div class="status-msg">Loading the set list…</div>';
       return;
     }
-    if (state.loadError){
-      listEl.innerHTML = `<div class="banner error" style="margin-bottom:12px">${state.loadError}</div>`;
-    } else {
-      listEl.innerHTML = '';
-    }
+    // A query searches every list, not just the open tab — otherwise finding
+    // something already marked Played It means guessing which tab to try
+    // first. The active tab still governs everything once the box is empty.
+    const searching = state.query.trim() !== '';
 
-    let games = state.games.filter(g => g.status === state.activeTab);
+    let banners = '';
+    if (state.loadError) banners += `<div class="banner error" style="margin-bottom:12px">${state.loadError}</div>`;
+    if (searching) banners += `<div class="banner" style="margin-bottom:12px">Searching every list for "${escapeHtml(state.query.trim())}" — tabs are ignored while you're searching.</div>`;
+    listEl.innerHTML = banners;
+
+    let games = searching ? state.games.slice() : state.games.filter(g => g.status === state.activeTab);
     if (state.platformFilter !== 'All'){
       games = games.filter(g => g.platform === state.platformFilter);
     }
-    if (state.query.trim()){
+    if (searching){
       const q = state.query.trim().toLowerCase();
       games = games.filter(g => g.title.toLowerCase().includes(q));
     }
 
     if (games.length === 0){
       const platformOn = state.platformFilter !== 'All' ? ' on ' + state.platformFilter : '';
-      const emptyMsg = state.query.trim()
-        ? 'No games in this list match your search' + platformOn + '.'
+      const emptyMsg = searching
+        ? 'No games match your search' + platformOn + '.'
         : platformOn
           ? 'No games in this list' + platformOn + '.'
           : (state.activeTab === 'up_next' ? 'Nothing queued yet. Add a game to get the night started.'
@@ -986,7 +993,10 @@
         + '<circle cx="16" cy="12" r="1"/><circle cx="18.5" cy="14.5" r="1"/></svg>';
       listEl.insertAdjacentHTML('beforeend', `<div class="empty">${pad}<div>${emptyMsg}</div></div>`);
     } else {
-      listEl.insertAdjacentHTML('beforeend', games.map(stubEl).join(''));
+      // stubEl(g, searching), not the bare function — Array.map also passes
+      // the index, which would make every even-indexed row think it was in
+      // search mode too.
+      listEl.insertAdjacentHTML('beforeend', games.map(g => stubEl(g, searching)).join(''));
     }
 
     $$('.stub', listEl).forEach(row => {
