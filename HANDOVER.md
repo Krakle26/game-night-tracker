@@ -225,6 +225,29 @@ script hammer the endpoint at network speed for free. A success clears the
 count immediately, so a few mistyped attempts followed by the right code
 never trips it.
 
+## coverUrl was a stored-XSS hole
+
+Found while reviewing the six features above, not introduced by them —
+`coverUrl` had been rendered straight into `<img src="…">` in three places
+since the original build, with no escaping and no server-side format check.
+Every other user-controlled field (title, note, addedBy) went through
+`escapeHtml`; this one didn't.
+
+Confirmed exploitable, not just theoretically: POSTing
+`coverUrl: 'x" onerror="…'` was accepted and stored verbatim, and would have
+run the injected script in every other viewer's browser the next time that
+row rendered. Anyone holding the shared pass code could plant it — and per
+"The pass code" above, that's the whole group's only access control, so a
+payload like this could exfiltrate it from `localStorage` and hand out
+access beyond whoever the group actually shared the code with.
+
+Fixed on both sides: `escapeHtml` at all three render sites (row cover,
+detail sheet banner, search-results preview), and the server now rejects
+any `coverUrl` that isn't `null` or a `https://` URL. The server check
+matters on its own — the client escaping stops the injection, but nothing
+stopped a render site added later from forgetting to escape, the way this
+one did.
+
 ## Cost
 
 Still expected to be £0/month. With the single-key layout, four people polling

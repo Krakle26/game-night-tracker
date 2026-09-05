@@ -83,6 +83,13 @@ function invalidGame(game) {
   if (typeof game.id !== 'string' || game.id === '') return 'id must be a non-empty string';
   if (typeof game.title !== 'string' || game.title.trim() === '') return 'title must be a non-empty string';
   if (!STATUSES.has(game.status)) return 'status must be up_next, playing or played';
+  // The client renders this straight into an <img src>. It's escaped there
+  // too, but anyone holding the shared pass code can POST directly to this
+  // route, so the check belongs here as well — not just in whichever render
+  // site someone remembers to update next.
+  if (game.coverUrl != null && !/^https:\/\//i.test(game.coverUrl)) {
+    return 'coverUrl must be a full https URL or null';
+  }
   return null;
 }
 

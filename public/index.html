@@ -1005,7 +1005,11 @@
 
   function coverEl(game){
     if (game.coverUrl){
-      return `<div class="cover"><img src="${game.coverUrl}" alt=""></div>`;
+      // escapeHtml, not the raw value — coverUrl round-trips through the API
+      // with no format check on the way in, so a crafted `x" onerror="…`
+      // stored by anyone holding the pass code would otherwise run in every
+      // other viewer's browser the moment this row rendered.
+      return `<div class="cover"><img src="${escapeHtml(game.coverUrl)}" alt=""></div>`;
     }
     const letter = (game.title || '?').trim()[0]?.toUpperCase() || '?';
     return `<div class="cover">${letter}</div>`;
@@ -1133,7 +1137,7 @@
   function openGameModal(game){
     const root = $('#modalRoot');
     const cover = game.coverUrl
-      ? `<div class="detail-banner"><img src="${game.coverUrl}" alt=""></div>`
+      ? `<div class="detail-banner"><img src="${escapeHtml(game.coverUrl)}" alt=""></div>`
       : '';
     const canAdvance = game.status !== 'played';
     const canRevert = game.status !== 'up_next';
@@ -1477,7 +1481,7 @@
       }
       resultsEl.innerHTML = results.map((r, i) => `
         <div class="result-row" data-idx="${i}">
-          ${r.coverUrl ? `<div class="cover"><img src="${r.coverUrl}" alt=""></div>` : `<div class="cover">${(r.title||'?')[0]}</div>`}
+          ${r.coverUrl ? `<div class="cover"><img src="${escapeHtml(r.coverUrl)}" alt=""></div>` : `<div class="cover">${escapeHtml((r.title||'?')[0])}</div>`}
           <div>
             <div class="rtitle">${escapeHtml(r.title)}${r.year ? ' <span style="color:var(--ink-dim)">('+r.year+')</span>' : ''}</div>
             <div class="rmeta">${(r.platforms||[]).join(' · ')}</div>
