@@ -10,6 +10,7 @@ with games added by search (RAWG) or by hand, kept in sync across everyone's pho
 public/index.html         entire frontend, no build step
 public/manifest.json          home-screen install metadata
 public/icons/                 app icons (see "Adding it to a phone")
+public/_headers               security headers on the static page
 functions/api/_middleware.js  gates every /api route on the shared pass code
 functions/api/games.js        GET the shared list, POST a game (add or move),
                               DELETE one by id

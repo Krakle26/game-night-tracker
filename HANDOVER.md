@@ -261,6 +261,37 @@ production catalog against every new rule before deploying it: all 18
 games already in it passed cleanly, so nothing already stored got locked
 out of future edits.
 
+## Security headers, and a Content-Security-Policy that isn't there
+
+Broadened the check past injection once the id/year/platform holes turned
+up — dependencies (`npm audit`: clean), secrets (`.dev.vars` never
+committed, no real token ever appeared in history), and the response
+headers, which turned out to have nothing on them at all. Added
+`public/_headers`: `X-Content-Type-Options`, `X-Frame-Options`,
+`Referrer-Policy`, `Permissions-Policy`. All four are static-asset-only —
+Cloudflare Pages doesn't apply `_headers` to Function routes, so `/api/*`
+still comes back with none of them. Not worth chasing: they protect
+browser-rendered HTML, and the API only ever returns
+`Content-Type: application/json` with nothing that benefits from them.
+
+Deliberately no CSP. The entire frontend is one inline `<script>` block —
+that's the "no build step" this project is built around — and a CSP loose
+enough to allow that (`script-src 'unsafe-inline'`) also re-permits inline
+event-handler attributes like `onerror=`, which is the exact attack class
+just closed by escaping id/coverUrl/year/platform. It would cost real
+complexity for close to no protection. The real fix, if this ever feels
+worth it, is extracting the script to its own file so `script-src 'self'`
+holds without an exception — not done here without weighing that trade-off
+first.
+
+Debugging note for next time: verifying `_headers` changes by repeatedly
+backgrounding `wrangler pages dev` left a pile of stale processes all
+still bound to :8788 from earlier runs that hadn't actually exited, and
+curl was landing on whichever one happened to answer — which looked
+exactly like `_headers` silently dropping some headers but not others.
+Kill everything actually holding the port (not just the npm wrapper)
+before trusting a "did my change take effect" test against local dev.
+
 ## Cost
 
 Still expected to be £0/month. With the single-key layout, four people polling
