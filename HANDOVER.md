@@ -225,13 +225,13 @@ script hammer the endpoint at network speed for free. A success clears the
 count immediately, so a few mistyped attempts followed by the right code
 never trips it.
 
-## coverUrl was a stored-XSS hole
+## coverUrl, id, year and platform were all stored-XSS holes
 
-Found while reviewing the six features above, not introduced by them —
+Found while reviewing the six features above, not introduced by them.
 `coverUrl` had been rendered straight into `<img src="…">` in three places
 since the original build, with no escaping and no server-side format check.
-Every other user-controlled field (title, note, addedBy) went through
-`escapeHtml`; this one didn't.
+Every other user-controlled field that went through `escapeHtml` (title,
+note, addedBy) was fine; the fields that didn't, weren't.
 
 Confirmed exploitable, not just theoretically: POSTing
 `coverUrl: 'x" onerror="…'` was accepted and stored verbatim, and would have
@@ -241,12 +241,25 @@ row rendered. Anyone holding the shared pass code could plant it — and per
 payload like this could exfiltrate it from `localStorage` and hand out
 access beyond whoever the group actually shared the code with.
 
-Fixed on both sides: `escapeHtml` at all three render sites (row cover,
-detail sheet banner, search-results preview), and the server now rejects
-any `coverUrl` that isn't `null` or a `https://` URL. The server check
-matters on its own — the client escaping stops the injection, but nothing
-stopped a render site added later from forgetting to escape, the way this
-one did.
+Fixing that one prompted a full sweep of every field rendered into HTML
+rather than stopping there, since one missed `escapeHtml` call rarely
+travels alone. It didn't here either: `id` (rendered raw into three
+`data-id="…"` attributes), `year` (rendered raw as text next to a title —
+exploitable via a plain `<img onerror>` string, no attribute breakout even
+needed), and `platform` (rendered raw as a tag's visible text via `tagEl`)
+had the exact same hole. All three were reachable the same way — a crafted
+POST straight to `/api/games`, no UI involved.
+
+Fixed on both sides for all four fields: `escapeHtml` at every render site,
+and the server now rejects anything out of shape — `coverUrl` must be
+`null` or `https://`, `platform` must be one of the five known values,
+`year` must be `null` or a plausible integer, `id` must be a short
+alphanumeric string. The server checks matter on their own — client
+escaping stops the injection, but nothing stops a render site added later
+from forgetting to call it, the way these four did. Checked the live
+production catalog against every new rule before deploying it: all 18
+games already in it passed cleanly, so nothing already stored got locked
+out of future edits.
 
 ## Cost
 

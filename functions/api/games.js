@@ -77,18 +77,36 @@ async function snapshotBeforeWrite(env, catalogBeforeWrite) {
 }
 
 const STATUSES = new Set(['up_next', 'playing', 'played']);
+const PLATFORMS = new Set(['PC', 'PS5', 'Xbox', 'Switch', 'Other']);
+// The client's own uid() only ever produces this shape (a leading letter,
+// then base36 characters); this is deliberately a little looser than that
+// exact output so a future change to id generation doesn't need a matching
+// change here, while still ruling out anything that could break out of an
+// HTML attribute.
+const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
+/**
+ * The client renders id, year and platform straight into HTML — id and
+ * platform as literal text/attribute values, year as text next to a title —
+ * same as coverUrl renders into an <img src>. They're escaped on that side
+ * too, but anyone holding the shared pass code can POST directly to this
+ * route, so every field that ends up in the DOM unescaped-by-default gets a
+ * format check here as well, not just wherever a render site remembers to
+ * call escapeHtml.
+ */
 function invalidGame(game) {
   if (typeof game !== 'object' || game === null) return 'Body must be a game object';
-  if (typeof game.id !== 'string' || game.id === '') return 'id must be a non-empty string';
+  if (typeof game.id !== 'string' || !ID_PATTERN.test(game.id)) {
+    return 'id must be a short alphanumeric string';
+  }
   if (typeof game.title !== 'string' || game.title.trim() === '') return 'title must be a non-empty string';
   if (!STATUSES.has(game.status)) return 'status must be up_next, playing or played';
-  // The client renders this straight into an <img src>. It's escaped there
-  // too, but anyone holding the shared pass code can POST directly to this
-  // route, so the check belongs here as well — not just in whichever render
-  // site someone remembers to update next.
+  if (!PLATFORMS.has(game.platform)) return 'platform must be PC, PS5, Xbox, Switch or Other';
   if (game.coverUrl != null && !/^https:\/\//i.test(game.coverUrl)) {
     return 'coverUrl must be a full https URL or null';
+  }
+  if (game.year != null && !(Number.isInteger(game.year) && game.year > 1900 && game.year < 3000)) {
+    return 'year must be a plausible integer or null';
   }
   return null;
 }

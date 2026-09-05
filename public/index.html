@@ -1012,12 +1012,15 @@
       return `<div class="cover"><img src="${escapeHtml(game.coverUrl)}" alt=""></div>`;
     }
     const letter = (game.title || '?').trim()[0]?.toUpperCase() || '?';
-    return `<div class="cover">${letter}</div>`;
+    return `<div class="cover">${escapeHtml(letter)}</div>`;
   }
 
   function tagEl(platform){
     const color = PLATFORM_COLORS[platform] || PLATFORM_COLORS.Other;
-    return `<span class="tag" style="--tagc:${color}">${platform}</span>`;
+    // escapeHtml, not the raw value — the server restricts platform to a
+    // known set on the way in, but this renders the same way coverUrl did
+    // before it was fixed, so it doesn't get to assume the data is clean.
+    return `<span class="tag" style="--tagc:${color}">${escapeHtml(platform)}</span>`;
   }
 
   function stubEl(game, showStatus){
@@ -1033,17 +1036,17 @@
     // inside a single tab the status is already implied by being there.
     if (showStatus) meta.splice(1, 0, STATUS_LABEL[game.status]);
     return `
-      <div class="stub ${isNow?'now':''}" data-id="${game.id}">
+      <div class="stub ${isNow?'now':''}" data-id="${escapeHtml(game.id)}">
         ${coverEl(game)}
         <div class="stub-body">
-          <div class="stub-title">${escapeHtml(game.title)}${game.year ? ' <span style="color:var(--ink-dimmer);font-size:15px;font-weight:500">('+game.year+')</span>' : ''}</div>
+          <div class="stub-title">${escapeHtml(game.title)}${game.year ? ' <span style="color:var(--ink-dimmer);font-size:15px;font-weight:500">('+escapeHtml(game.year)+')</span>' : ''}</div>
           <div class="stub-meta">${meta.map(m=>`<span>${m}</span>`).join('<span>·</span>')}</div>
           ${game.note ? `<div class="note">"${escapeHtml(game.note)}"</div>` : ''}
         </div>
         <div class="perf"></div>
         <div class="stub-actions">
-          ${canAdvance ? `<button class="act-btn advance" data-action="advance" data-id="${game.id}" aria-label="Move to next stage" title="Move forward">›</button>` : ''}
-          ${canRevert ? `<button class="act-btn" data-action="revert" data-id="${game.id}" aria-label="Move back" title="Move back">‹</button>` : ''}
+          ${canAdvance ? `<button class="act-btn advance" data-action="advance" data-id="${escapeHtml(game.id)}" aria-label="Move to next stage" title="Move forward">›</button>` : ''}
+          ${canRevert ? `<button class="act-btn" data-action="revert" data-id="${escapeHtml(game.id)}" aria-label="Move back" title="Move back">‹</button>` : ''}
         </div>
       </div>
     `;
@@ -1159,7 +1162,7 @@
           ${cover}
           <div class="detail-head">
             <h2 class="display">${escapeHtml(game.title)}</h2>
-            <div class="detail-year">${game.year ? game.year + ' · ' : ''}${STATUS_LABEL[game.status]} · added by ${escapeHtml(game.addedBy || 'someone')}</div>
+            <div class="detail-year">${game.year ? escapeHtml(game.year) + ' · ' : ''}${STATUS_LABEL[game.status]} · added by ${escapeHtml(game.addedBy || 'someone')}</div>
           </div>
 
           <div class="chips" id="detailChips">
