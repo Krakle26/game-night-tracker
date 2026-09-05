@@ -365,8 +365,8 @@
     background-clip:text;
     color:transparent;
   }
-  .modal .close{
-    position:absolute; top:14px; right:18px;
+  .modal .close, .modal .edit-btn{
+    position:absolute; top:14px;
     background:none;
     border:1px solid var(--line-soft);
     border-radius:50%;
@@ -375,6 +375,8 @@
     font-size:18px; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
   }
+  .modal .close{ right:18px; }
+  .modal .edit-btn{ right:70px; }
   .field label{
     display:block;
     font-family:'Rajdhani', sans-serif;
@@ -565,6 +567,7 @@
   }
 
   const PLATFORM_COLORS = { PC:'var(--pc)', PS5:'var(--ps5)', Xbox:'var(--xbox)', Switch:'var(--switch)', Other:'var(--other)' };
+  const PLATFORMS = Object.keys(PLATFORM_COLORS);
   const STATUS_LABEL = { up_next:'On Deck', playing:'On Stage', played:'Played It' };
   const STATUS_ORDER = ['up_next','playing','played'];
 
@@ -958,6 +961,7 @@
       <div class="overlay" id="detailOverlay">
         <div class="modal" style="position:relative">
           <button class="close" id="closeDetail" aria-label="Close">&#10005;</button>
+          <button class="edit-btn" id="editDetail" aria-label="Edit game">&#9998;</button>
           ${cover}
           <div class="detail-head">
             <h2 class="display">${escapeHtml(game.title)}</h2>
@@ -1007,6 +1011,7 @@
     if ($('#detailFwd')) $('#detailFwd').onclick = () => { close(); advanceStatus(game); };
     if ($('#detailBack')) $('#detailBack').onclick = () => { close(); revertStatus(game); };
     $('#detailDelete').onclick = () => { close(); openDeleteModal(game); };
+    $('#editDetail').onclick = () => { close(); openEditModal(game); };
 
     if (game.sourceId) loadDetailInto(game);
   }
@@ -1047,6 +1052,61 @@
     }catch(e){
       if ($('#detailInfo')) infoEl.innerHTML = '<div class="banner">Could not reach the game database, so there is nothing extra to show right now.</div>';
     }
+  }
+
+  /**
+   * The only fields on offer are title and platform — the two things someone
+   * actually gets wrong (a typo, or picking the console they meant to play it
+   * on). Cover, year and sourceId come from RAWG at add time; if those are
+   * wrong the game itself was probably picked wrong, and re-adding it from
+   * search is the more honest fix than hand-editing metadata out of sync with
+   * where it came from.
+   */
+  function openEditModal(game){
+    const root = $('#modalRoot');
+    root.innerHTML = `
+      <div class="overlay" id="editOverlay">
+        <div class="modal" style="position:relative">
+          <button class="close" id="closeEdit" aria-label="Close">&#10005;</button>
+          <h2 class="display">EDIT GAME</h2>
+          <div class="field">
+            <label for="editTitle">Title</label>
+            <input id="editTitle" type="text" value="${escapeHtml(game.title)}">
+          </div>
+          <div class="field">
+            <label for="editPlatform">Platform</label>
+            <select id="editPlatform">
+              ${PLATFORMS.map(p => `<option ${p === game.platform ? 'selected' : ''}>${p}</option>`).join('')}
+            </select>
+          </div>
+          <button class="btn" id="saveEditBtn" style="width:100%">Save changes</button>
+        </div>
+      </div>
+    `;
+
+    const close = () => { root.innerHTML = ''; };
+    $('#closeEdit').onclick = close;
+    $('#editOverlay').addEventListener('click', e => { if (e.target.id === 'editOverlay') close(); });
+
+    $('#saveEditBtn').onclick = async () => {
+      const title = $('#editTitle').value.trim();
+      if (!title) return;
+      const btn = $('#saveEditBtn');
+      btn.textContent = 'Saving…';
+      game.title = title;
+      game.platform = $('#editPlatform').value;
+      game.updatedAt = Date.now();
+      game.updatedBy = state.myName;
+      render();
+      try{
+        await saveGame(game);
+        close();
+      }catch(e){
+        btn.textContent = 'Could not save — try again';
+      }
+    };
+    $('#editTitle').addEventListener('keydown', e => { if (e.key === 'Enter') $('#saveEditBtn').click(); });
+    $('#editTitle').focus();
   }
 
   function openDeleteModal(game){
@@ -1161,7 +1221,7 @@
             <div class="field" style="margin-bottom:10px">
               <label for="manualPlatform">Platform</label>
               <select id="manualPlatform">
-                <option>PC</option><option>PS5</option><option>Xbox</option><option>Switch</option><option>Other</option>
+                ${PLATFORMS.map(p => `<option>${p}</option>`).join('')}
               </select>
             </div>
             <button class="btn secondary" id="manualAddBtn" style="width:100%">Add to On Deck</button>
