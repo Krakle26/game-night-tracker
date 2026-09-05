@@ -654,6 +654,27 @@
     return days + 'd ago';
   }
 
+  /**
+   * On Deck is the one list where a game sits actually matters — it's
+   * the answer to "what do we play next". The other two lists are read as
+   * history, not a queue, so they stay ordered by recency the way they
+   * always have (the server already keeps the whole catalog sorted by
+   * updatedAt, which the client renders in as-is).
+   *
+   * Games added before this feature existed have no `order` field. Falling
+   * back to -(updatedAt||addedAt) reproduces exactly the ordering they
+   * already had — newest touched first — so nothing visibly reshuffles
+   * until someone actually taps Move up/down on it.
+   */
+  function effectiveOrder(game){
+    return game.order != null ? game.order : -(game.updatedAt || game.addedAt || 0);
+  }
+  function upNextOrdered(){
+    return state.games
+      .filter(g => g.status === 'up_next')
+      .sort((a, b) => effectiveOrder(a) - effectiveOrder(b));
+  }
+
   // ===== Storage =====
   // Two different things with two different homes: the name is per-device and
   // never leaves the phone, the set list is shared and lives in KV behind
@@ -814,10 +835,16 @@
 
   // ===== Actions =====
   async function addGame({ title, platform, coverUrl, sourceId, year }){
+    // Lands at the front of the queue, same place a new game has always
+    // appeared — one lower than the current lowest so it sorts ahead of
+    // everything already there, however that existing order came to be.
+    const upNext = upNextOrdered();
+    const order = (upNext.length ? effectiveOrder(upNext[0]) : 0) - 1000;
     const game = {
       id: uid(),
       title, platform, coverUrl: coverUrl || null, sourceId: sourceId || null, year: year || null,
       status: 'up_next',
+      order,
       note: '',
       addedBy: state.myName,
       addedAt: Date.now(),
@@ -854,6 +881,43 @@
     render();
     try{ await saveGame(game); }
     catch(e){ state.loadError = 'Move failed to save — try again.'; render(); }
+  }
+
+  /**
+   * Swaps this game's queue position with its neighbor. Deliberately does not
+   * touch updatedAt/updatedBy — a reorder isn't a content change, and stamping
+   * one would make "3m ago" lie about when the game itself was last touched,
+   * plus reshuffle its position in the Played It / On Stage lists for no
+   * reason (those stay sorted by updatedAt).
+   *
+   * The neighbor is re-fetched from state.games between the two saves rather
+   * than reusing the reference captured up front, so the second save can't
+   * clobber a field someone else changed on it while the first save was in
+   * flight — the same merge-on-write contract every other action here relies on.
+   */
+  async function moveInQueue(game, direction){
+    const list = upNextOrdered();
+    const idx = list.findIndex(g => g.id === game.id);
+    const swapIdx = idx + direction;
+    if (idx === -1 || swapIdx < 0 || swapIdx >= list.length) return;
+
+    const neighborId = list[swapIdx].id;
+    const mine = effectiveOrder(game);
+    const theirs = effectiveOrder(list[swapIdx]);
+    game.order = theirs;
+    list[swapIdx].order = mine;
+    render();
+    try{
+      await saveGame(game);
+      const neighbor = state.games.find(g => g.id === neighborId);
+      if (neighbor){
+        neighbor.order = mine;
+        await saveGame(neighbor);
+      }
+    }catch(e){
+      state.loadError = 'Reordering failed to save — try again.';
+      render();
+    }
   }
 
   async function removeGame(game){
@@ -970,7 +1034,9 @@
     if (searching) banners += `<div class="banner" style="margin-bottom:12px">Searching every list for "${escapeHtml(state.query.trim())}" — tabs are ignored while you're searching.</div>`;
     listEl.innerHTML = banners;
 
-    let games = searching ? state.games.slice() : state.games.filter(g => g.status === state.activeTab);
+    let games = searching ? state.games.slice()
+      : state.activeTab === 'up_next' ? upNextOrdered()
+      : state.games.filter(g => g.status === state.activeTab);
     if (state.platformFilter !== 'All'){
       games = games.filter(g => g.platform === state.platformFilter);
     }
@@ -1030,6 +1096,15 @@
     const canAdvance = game.status !== 'played';
     const canRevert = game.status !== 'up_next';
 
+    // Queue position only means anything on On Deck — On Stage and Played It
+    // are read as history, not something to reorder. Buttons live here, not
+    // on the row, for the same reason Delete does: a row already carries one
+    // action, and a phone-width title has no room to spare for a second.
+    const upNext = game.status === 'up_next' ? upNextOrdered() : [];
+    const queuePos = upNext.findIndex(g => g.id === game.id);
+    const isFirst = queuePos <= 0;
+    const isLast = queuePos === upNext.length - 1;
+
     root.innerHTML = `
       <div class="overlay" id="detailOverlay">
         <div class="modal" style="position:relative">
@@ -1057,6 +1132,12 @@
             <button class="btn secondary" id="saveNoteBtn" style="margin-top:9px;width:100%">Save note</button>
           </div>
 
+          ${upNext.length > 1 ? `
+          <div class="detail-actions">
+            ${!isFirst ? '<button class="btn secondary" id="moveUpBtn">&#9650; Play sooner</button>' : ''}
+            ${!isLast ? '<button class="btn secondary" id="moveDownBtn">&#9660; Play later</button>' : ''}
+          </div>` : ''}
+
           <div class="detail-actions">
             ${canRevert ? '<button class="btn secondary" id="detailBack">Move back</button>' : ''}
             ${canAdvance ? '<button class="btn" id="detailFwd">' + (game.status === 'up_next' ? 'Put on stage' : 'Mark played') + '</button>' : ''}
@@ -1083,6 +1164,8 @@
 
     if ($('#detailFwd')) $('#detailFwd').onclick = () => { close(); advanceStatus(game); };
     if ($('#detailBack')) $('#detailBack').onclick = () => { close(); revertStatus(game); };
+    if ($('#moveUpBtn')) $('#moveUpBtn').onclick = () => { close(); moveInQueue(game, -1); };
+    if ($('#moveDownBtn')) $('#moveDownBtn').onclick = () => { close(); moveInQueue(game, 1); };
     $('#detailDelete').onclick = () => { close(); openDeleteModal(game); };
     $('#editDetail').onclick = () => { close(); openEditModal(game); };
 
