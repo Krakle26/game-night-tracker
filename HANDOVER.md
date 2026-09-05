@@ -148,9 +148,87 @@ the three lists clips now.
 The lesson for future work here: check a layout at 375px before calling it
 done. Artboard width is not phone width.
 
+## Editing a game
+
+Added once it became clear delete-and-re-add was the only way to fix a typo
+or the wrong platform — which loses `addedBy`/`addedAt` and drops the game
+to the bottom of its list via the `updatedAt` sort. The edit modal reuses the
+existing upsert-by-id POST route, so no backend change was needed.
+
+Scoped to title and platform only, not cover/year/`sourceId`. Those come
+from RAWG at add time; a wrong one usually means the wrong game was picked,
+and re-adding via search is more honest than hand-editing metadata out of
+sync with its source.
+
+## Platform filter
+
+A chip row (`ALL` plus one per platform) above the tabs, narrowing whichever
+list is open. Each chip tints from the same `--tagc` colour a game's row tag
+already uses, so a platform's colour means the same thing everywhere — `ALL`
+borrows the tabs' gradient instead, since it reads as the reset state rather
+than a platform.
+
+## Search across every list
+
+Search used to only match the open tab, so finding something already marked
+Played It meant guessing which tab to try first. A query now searches all
+three lists and shows a banner saying so; each result picks up a status
+label since inside a single tab that was already implied. Combines with the
+platform filter; clearing the box returns to normal tab-scoped browsing.
+
+## Manual queue order
+
+On Deck's order was purely "whatever was touched most recently" — no way to
+say "play this one next" without it already being the newest addition.
+Added a per-game `order` field and Move up/down buttons in the detail sheet,
+not the row, for the same reason Delete lives there (see "Row width at phone
+size" above).
+
+Deliberately doesn't touch `updatedAt` on a reorder — it's a position
+change, not a content change, and stamping it would make a game's "Xm ago"
+label lie and would reshuffle its place in the other two lists for no
+reason. Games from before this feature fall back to their existing
+`updatedAt`-based order, so nothing visibly reshuffles until someone
+actually taps a button.
+
+## One game on stage
+
+With only three people in the group, confirmed that On Stage should mean
+one thing — the single game everyone's playing right now, even when that
+spans multiple platforms via cross-play — rather than a slot that could hold
+two different games for two subgroups. Promoting a second game now demotes
+whatever was already on stage back to On Deck, stamped with a normal
+status-change `updatedAt` since it's a real transition, unlike a queue
+reorder.
+
+Best-effort, not server-enforced: two people promoting different games in
+the same instant could still both land as playing, the same tradeoff already
+accepted for simultaneous edits elsewhere in this app.
+
+## Daily catalog backups
+
+A single KV key with no history had no way back if a write went wrong. Every
+write that changes the catalog now snapshots the pre-write state into
+`catalog:backup:<today's date>` if today doesn't have one yet, and prunes
+snapshots older than 30 days on that same write — standing in for a
+scheduled job, since Pages Functions have no cron of their own. Restoring is
+a manual `wrangler kv key get`/`put`, documented in the README; a recovery
+this rare doesn't earn a UI or its own auth.
+
+## Pass-code lockout
+
+Ten wrong codes from the same IP in five minutes now locks that IP out for
+the rest of the window, tracked in KV under an `authfail:` prefix with a TTL
+so it self-cleans. The pass code is a 192-bit random token, so this was
+never about stopping a crackable brute force — only about not letting a
+script hammer the endpoint at network speed for free. A success clears the
+count immediately, so a few mistyped attempts followed by the right code
+never trips it.
+
 ## Cost
 
 Still expected to be £0/month. With the single-key layout, four people polling
 every 20s across an evening is a few thousand KV reads a day against a 100K
 allowance. Writes only happen when someone adds or moves a game, far under the
-1,000/day free-tier cap.
+1,000/day free-tier cap. The daily backup snapshot and the lockout counter add
+at most a few extra reads and writes per session — still nowhere near the caps.

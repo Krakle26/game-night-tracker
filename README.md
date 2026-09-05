@@ -156,6 +156,28 @@ The key ships in the page and is visible to anyone who opens it — accepted for
 small private group. Moving the call server-side into a Function, with the key as
 a Cloudflare secret, is the fix if that ever stops being acceptable.
 
+## Browsing the list
+
+Two ways to cut down three lists that get long over a season.
+
+**Platform filter** — a chip row (`ALL` plus one per platform) above the tabs
+narrows whichever list is open to games on that platform. Each chip tints
+from the same colour a game's row tag already uses, so a platform's colour
+means the same thing everywhere it shows up. `ALL` borrows the tabs'
+gradient instead, since it reads as the reset state rather than a platform.
+Tab counts stay unfiltered — they're a total per status, same as they've
+always ignored the search box.
+
+**Search** looks across all three lists at once, not just the open tab —
+typing while on On Deck can still find something already marked Played It.
+A banner says so ("tabs are ignored while you're searching") since a tab
+silently doing nothing while you type would be more confusing than saying
+it outright. Each result picks up a small status label (On Deck / On Stage /
+Played It) while searching, since inside a single tab that's already implied
+by which list you're looking at. Clearing the box returns to normal
+tab-scoped browsing. The two combine — filter to a platform, then search
+within it.
+
 ## How the data is stored
 
 The whole catalog lives under **one KV key** (`catalog`) holding a JSON array,
@@ -216,6 +238,48 @@ on, which is usually what decides whether the group can play it at all.
 
 The note lives here too — one field, saved as an ordinary upsert, so it syncs
 like any other change.
+
+Tapping the pencil icon opens an edit modal for the title and platform
+only — the two things someone actually gets wrong (a typo, or the console
+they meant to add it for). Cover, year and `sourceId` stay fixed once a game
+is added: those came from RAWG at add time, and a wrong one usually means
+the wrong game was picked, so re-adding via search is the more honest fix
+than hand-editing metadata out of sync with where it came from.
+
+## Queue order
+
+On Deck is the one list where a game's position actually matters — it's the
+answer to "what do we play next". On Stage and Played It are read as
+history and stay sorted by recency, same as always.
+
+Reordering happens from the detail sheet — "▲ Play sooner" / "▼ Play later"
+— not the row, for the same reason Delete lives there: a row carries one
+action, and a phone-width title has no room to spare for a second (see
+"A row carries one action" under Design system).
+
+Backed by a per-game `order` field, populated when a game is added (new
+games land at the front, the same place they've always appeared) and
+otherwise left alone — reordering just swaps two `order` values, nothing
+else. It deliberately doesn't touch `updatedAt`: a reorder is a position
+change, not a content change, and stamping it would make a game's "Xm ago"
+label lie about when it was actually last touched. Games added before this
+feature existed fall back to their `updatedAt`, reproducing exactly the
+order they already had, so nothing visibly reshuffles until someone taps a
+button.
+
+## One game on stage
+
+With a group this size, On Stage means one thing: the game everyone's
+playing right now, however many platforms that spans via cross-play — not a
+slot per person. Promoting a second game there demotes whatever was already
+on stage back to On Deck, rather than leaving two now-playing cards stacked
+on top of each other. The demoted game gets a normal `updatedAt` stamp,
+unlike a queue reorder, since this is a real status change.
+
+This is best-effort, not enforced server-side: two people promoting
+different games in the same instant could still both land as playing until
+someone touches one of them again — the same tradeoff the rest of this app
+already accepts for simultaneous edits.
 
 ## Sync
 
