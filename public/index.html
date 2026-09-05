@@ -126,6 +126,50 @@
   .search-wrap input::placeholder{ color:var(--ink-dimmer); }
   .search-wrap input:focus{ outline:none; border-color:var(--tape); box-shadow:0 0 18px rgba(33,212,253,0.3); }
 
+  /* ---------- Platform filter ---------- */
+  /* A horizontally-scrolling row rather than wrapping, so it never pushes the
+     tabs down — five chips plus "All" is already tight at phone width. */
+  .platform-filter{
+    position:relative; z-index:1;
+    display:flex; gap:8px;
+    margin:0 20px 18px;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .platform-filter::-webkit-scrollbar{ display:none; }
+  .pf-chip{
+    flex:0 0 auto;
+    background:none;
+    border:1px solid var(--line-soft);
+    border-radius:999px;
+    color:var(--ink-dim);
+    font-family:'Rajdhani', sans-serif;
+    font-weight:700;
+    letter-spacing:0.08em;
+    font-size:12px;
+    min-height:44px;
+    padding:0 16px;
+    cursor:pointer;
+    display:flex; align-items:center;
+  }
+  /* "All" reads as the reset/default, so it borrows the tabs' actionable
+     gradient rather than a platform colour. Every other chip tints from the
+     same --tagc a game's own tag uses, so the colour keeps meaning the same
+     thing everywhere it shows up. */
+  .pf-chip[data-platform="All"].active{
+    color:#FFFFFF;
+    border-color:transparent;
+    background:var(--grad);
+    box-shadow:0 0 16px rgba(255,60,172,0.5);
+  }
+  .pf-chip:not([data-platform="All"]).active{
+    color:var(--tagc);
+    border-color:var(--tagc);
+    background:color-mix(in srgb, var(--tagc) 20%, transparent);
+    box-shadow:0 0 14px color-mix(in srgb, var(--tagc) 40%, transparent);
+  }
+  .pf-chip:focus-visible{ outline:2px solid var(--tape); outline-offset:2px; }
+
   /* ---------- Tabs ---------- */
   .tabs{
     position:relative;
@@ -529,6 +573,15 @@
   <input id="searchInput" type="text" placeholder="Search the set list…" autocomplete="off">
 </div>
 
+<div class="platform-filter" role="tablist" aria-label="Filter by platform">
+  <button class="pf-chip active" data-platform="All">ALL</button>
+  <button class="pf-chip" data-platform="PC" style="--tagc:var(--pc)">PC</button>
+  <button class="pf-chip" data-platform="PS5" style="--tagc:var(--ps5)">PS5</button>
+  <button class="pf-chip" data-platform="Xbox" style="--tagc:var(--xbox)">XBOX</button>
+  <button class="pf-chip" data-platform="Switch" style="--tagc:var(--switch)">SWITCH</button>
+  <button class="pf-chip" data-platform="Other" style="--tagc:var(--other)">OTHER</button>
+</div>
+
 <div class="tabs" role="tablist">
   <button class="tab" data-status="up_next" role="tab">ON DECK<span class="count" id="count-up_next">0</span></button>
   <button class="tab" data-status="playing" role="tab">ON STAGE<span class="count" id="count-playing">0</span></button>
@@ -576,6 +629,7 @@
     games: [],
     activeTab: 'up_next',
     query: '',
+    platformFilter: 'All',
     loading: true,
     loadError: null,
     lastSynced: null,
@@ -889,6 +943,9 @@
       const isActive = tab.dataset.status === state.activeTab;
       tab.classList.toggle('active', isActive);
     });
+    $$('.pf-chip').forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.platform === state.platformFilter);
+    });
     STATUS_ORDER.forEach(s => {
       const n = state.games.filter(g => g.status === s).length;
       const el = $('#count-'+s);
@@ -907,17 +964,23 @@
     }
 
     let games = state.games.filter(g => g.status === state.activeTab);
+    if (state.platformFilter !== 'All'){
+      games = games.filter(g => g.platform === state.platformFilter);
+    }
     if (state.query.trim()){
       const q = state.query.trim().toLowerCase();
       games = games.filter(g => g.title.toLowerCase().includes(q));
     }
 
     if (games.length === 0){
+      const platformOn = state.platformFilter !== 'All' ? ' on ' + state.platformFilter : '';
       const emptyMsg = state.query.trim()
-        ? 'No games in this list match your search.'
-        : (state.activeTab === 'up_next' ? 'Nothing queued yet. Add a game to get the night started.'
-          : state.activeTab === 'playing' ? 'Nothing on stage right now.'
-          : 'Nothing played yet — the list starts here.');
+        ? 'No games in this list match your search' + platformOn + '.'
+        : platformOn
+          ? 'No games in this list' + platformOn + '.'
+          : (state.activeTab === 'up_next' ? 'Nothing queued yet. Add a game to get the night started.'
+            : state.activeTab === 'playing' ? 'Nothing on stage right now.'
+            : 'Nothing played yet — the list starts here.');
       const pad = '<svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="1.4" aria-hidden="true">'
         + '<rect x="2" y="7" width="20" height="12" rx="4"/><path d="M7 11v4"/><path d="M5 13h4"/>'
         + '<circle cx="16" cy="12" r="1"/><circle cx="18.5" cy="14.5" r="1"/></svg>';
@@ -1309,6 +1372,9 @@
   function wireStatic(){
     $$('.tab').forEach(tab => {
       tab.onclick = () => { state.activeTab = tab.dataset.status; render(); };
+    });
+    $$('.pf-chip').forEach(chip => {
+      chip.onclick = () => { state.platformFilter = chip.dataset.platform; render(); };
     });
     $('#searchInput').addEventListener('input', e => { state.query = e.target.value; render(); });
     $('#addBtn').onclick = () => {
